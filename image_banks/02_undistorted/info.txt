@@ -1,0 +1,1 @@
+Image bank with undistorted images.

@@ -3,7 +3,6 @@
 import numpy as np
 import cv2 as cv
 import glob
-import pickle
 ##############################################################################
 
 # Deklaracja parametrów pomiaru
@@ -30,7 +29,7 @@ imgpoints = [] # punkty 2 wymiarowe na płaszczyźnie zdjęcia
 num = 0 # deklaracja numeratora
 
 # Import zdjęć z wskazanego folderu do listy
-images = glob.glob('my_master_thesis/captured_images/*.png')
+images = glob.glob('my_master_thesis/image_banks/00_captured_raw/*.png')
 print(len(images))
 
 ############## Analiza zdjęć ##############
@@ -49,7 +48,7 @@ for image in images:
         cv.drawChessboardCorners(img, chessboardSize, corners2, ret)
         cv.imshow('img', img)
         # Zapisz zdjęcie z szachownicą do pliku
-        cv.imwrite('images_with_chess/img' + str(num) + '.png', img)
+        cv.imwrite('my_master_thesis/image_banks/01_with_chess/img' + str(num) + '.png', img)
         num += 1 # numerator nazwewnictwa
         cv.waitKey(1000)
     ##############
@@ -61,40 +60,36 @@ cv.destroyAllWindows()
 # Funkcja zwraca macierz kamery, współczynniki dystorsji oraz wektory rotacji i translacji
 ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, frameSize, None, None)
 
+print("Camera Calibrated: ", ret)
+print("\nCamera Matrix: \n", cameraMatrix)
+print("\nDistortion Parameters: \n", dist)
+print("\nRotation Vectors: \n", rvecs)
+print("\nTranslation Vectors: \n", tvecs)
 
-# Zapis wyników kalibracji do plików
-pickle.dump((cameraMatrix, dist), open( "calibration.pkl", "wb" ))
-pickle.dump(cameraMatrix, open( "cameraMatrix.pkl", "wb" ))
-pickle.dump(dist, open( "dist.pkl", "wb" ))
+
+# Zapis wyników kalibracji do pliku
+np.savez("CameraParams", cameraMatrix=cameraMatrix, dist=dist)
+
 
 ############## Usunięcie dystorsji ##############
-img = cv.imread('my_master_thesis/captured_images/img0.png') # wczytanie obrazu do obróbki
-h, w = img.shape[:2] # odczytanie długości (h) i szerokości (w) analizowanego obrazu
+num = 0 # deklaracja numeratora
 
-# Funkcja obliczająca nową wewnętrzną macierz kamery oraz ROI na podstawie współczynników dystorsji i wymiarów analizowanego obrazu
-newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+for image in images:
+    img = cv.imread(image) # wczytanie zdjęcia
+    h, w = img.shape[:2] # odczytanie długości (h) i szerokości (w) analizowanego obrazu
 
-
-# Usunięcie dystorsji (1 metoda)
-# Funkcja dedykowana do usunięcia dystorsji z obrazu dostarczona przez OpenCV
-dst = cv.undistort(img, cameraMatrix, dist, None, newCameraMatrix)
-# Wyciągnięcie współrzędnych z ROI (x,y) - wsp. lewego górnego rogu, (h, w) - długość, szerokość prostokąta
-x, y, w, h = roi
-dst = dst[y:y+h, x:x+w] # obcięcie obrobionego obrazu do wymiarów ROI
-cv.imwrite('undistorted_images/caliResult1.png', dst)
+    # Funkcja obliczająca nową wewnętrzną macierz kamery oraz ROI na podstawie współczynników dystorsji i wymiarów analizowanego obrazu
+    newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
 
-# Usunięcie dystorsji (2 metoda)
-# Funkcja obliczająca transformację zniekształceń i rektyfikacji
-mapx, mapy = cv.initUndistortRectifyMap(cameraMatrix, dist, None,
-newCameraMatrix, (w,h), 5)
-# Zastosowanie geometrycznej transformacji obrazu zgodnie z mapami obliczonymi poprzednią funkcją
-dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
-# Wyciągnięcie współrzędnych z ROI (x,y) - wsp. lewego górnego rogu, (h, w) - długość, szerokość prostokąta
-x, y, w, h = roi
-dst = dst[y:y+h, x:x+w] # obcięcie obrobionego obrazu do wymiarów ROI
-cv.imwrite('undistorted_images/caliResult2.png', dst)
-
+    # Usunięcie dystorsji (1 metoda)
+    # Funkcja dedykowana do usunięcia dystorsji z obrazu dostarczona przez OpenCV
+    dst = cv.undistort(img, cameraMatrix, dist, None, newCameraMatrix)
+    # Wyciągnięcie współrzędnych z ROI (x,y) - wsp. lewego górnego rogu, (h, w) - długość, szerokość prostokąta
+    x, y, w, h = roi
+    dst = dst[y:y+h, x:x+w] # obcięcie obrobionego obrazu do wymiarów ROI
+    cv.imwrite('my_master_thesis/image_banks/02_undistorted/img' + str(num) + '.png', img)
+    num += 1 # numerator nazwewnictwa
 
 
 # Obliczenie błędu ponownego odwzorowania
@@ -105,6 +100,7 @@ for i in range(len(objpoints)):
     # Obliczenie bezwzględnej normy między wynikami transformacji i algorytmu znajdowania narożników
     error = cv.norm(imgpoints[i], imgpoints2, cv.NORM_L2)/len(imgpoints2)
     mean_error += error # sumowanie błędów
+
 # Wyświetlenie wartości błędu średniego (średnia arytmetyczna błędów każdej kalibracji)
 print( "total error: {}".format(mean_error/len(objpoints)) )
 # Im błąd reprojekcji jest bliższy zeru, tym dokładniejsze są znalezione parametry.
