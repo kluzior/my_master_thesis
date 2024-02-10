@@ -53,7 +53,7 @@ axisBoxes = np.float32([[0,0,0], [0,3,0], [3,3,0], [3,0,0], [0,0,-3], [0,3,-3], 
 axisBoxes = axisBoxes *10
 print("\naxisBoxes: \n", axisBoxes)
 
-images = glob.glob('my_master_thesis/image_banks/02_undistorted/*.png')
+images = glob.glob('./image_banks/02_undistorted/*.png')
 print(len(images))
 
 num = 0
@@ -77,7 +77,7 @@ for image in images:
 
         img = drawBoxes(img, corners2_pnp, imgpts)
         cv.imshow('img', img)
-        cv.imwrite('my_master_thesis/image_banks/03_posed/img' + str(num) + '.png', img)
+        cv.imwrite('./image_banks/03_posed/img' + str(num) + '.png', img)
         num += 1
 
         cv.waitKey(1000)

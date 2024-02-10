@@ -29,7 +29,7 @@ imgpoints = [] # punkty 2 wymiarowe na płaszczyźnie zdjęcia
 num = 0 # deklaracja numeratora
 
 # Import zdjęć z wskazanego folderu do listy
-images = glob.glob('my_master_thesis/image_banks/00_captured_raw/*.png')
+images = glob.glob('./image_banks/00_captured_raw/*.png')
 print(len(images))
 
 ############## Analiza zdjęć ##############
@@ -48,7 +48,7 @@ for image in images:
         cv.drawChessboardCorners(img, chessboardSize, corners2, ret)
         cv.imshow('img', img)
         # Zapisz zdjęcie z szachownicą do pliku
-        cv.imwrite('my_master_thesis/image_banks/01_with_chess/img' + str(num) + '.png', img)
+        cv.imwrite('./image_banks/01_with_chess/img' + str(num) + '.png', img)
         num += 1 # numerator nazwewnictwa
         cv.waitKey(1000)
     ##############
@@ -68,7 +68,7 @@ print("\nTranslation Vectors: \n", tvecs)
 
 
 # Zapis wyników kalibracji do pliku
-np.savez("CameraParams", cameraMatrix=cameraMatrix, dist=dist)
+np.savez("./CameraParams", cameraMatrix=cameraMatrix, dist=dist)
 
 
 ############## Usunięcie dystorsji ##############
@@ -88,7 +88,7 @@ for image in images:
     # Wyciągnięcie współrzędnych z ROI (x,y) - wsp. lewego górnego rogu, (h, w) - długość, szerokość prostokąta
     x, y, w, h = roi
     dst = dst[y:y+h, x:x+w] # obcięcie obrobionego obrazu do wymiarów ROI
-    cv.imwrite('my_master_thesis/image_banks/02_undistorted/img' + str(num) + '.png', img)
+    cv.imwrite('./image_banks/02_undistorted/img' + str(num) + '.png', img)
     num += 1 # numerator nazwewnictwa
 
 

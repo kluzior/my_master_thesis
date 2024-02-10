@@ -1,23 +1,23 @@
+PYTHONPATH=$(CURDIR)
+
 #clean:
 #    rm -r __pycache__
 setup:  requirements.txt
 	pip install -r requirements.txt
 
-hello:
-	echo "Hello, World"
-
 image:
-	mkdir .\image_banks\00_captured_raw  
+	mkdir .\image_banks\00_captured_raw 
 	python -u "get_images.py"	
 
 calib:
+	mkdir .\image_banks\01_with_chess 
+	mkdir .\image_banks\02_undistorted 
 	python -u "camera_calibration.py"	
 	
+pose:
+	mkdir .\image_banks\03_posed 
+	python -u "pose_comp.py"	
 
-#clean_img:
-#	rm ./image_banks/00_captured_raw/img2.png
-
-clean_test:
-	echo "Attempting to delete:"
-	del .\image_banks\00_captured_raw\* /Q
-	rmdir .\image_banks\00_captured_raw
+clean:
+	echo "Attempting to delete all image banks:"
+	rmdir .\image_banks /s /q
