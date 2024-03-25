@@ -1,6 +1,8 @@
-import threading
-from logger_configuration import configure_logger
-from photo_recognitions.main import calibrate_camera
+from queue import Queue 
+from threading import Thread 
+
+from packages.logger_configuration import configure_logger
+from packages.photo_recognitions.main import calibrate_camera
 
 import logging
 
@@ -23,12 +25,12 @@ def print_square(num):
 if __name__ =="__main__":
     configure_logger()
 
-    #t_calibration = threading.Thread(target=calibrate_camera)
+    #t_calibration = Thread(target=calibrate_camera)
     calibrate_camera()
     
     # test threading
-    t1 = threading.Thread(target=print_square, args=(10,))
-    t2 = threading.Thread(target=print_cube, args=(10,))
+    t1 = Thread(target=print_square, args=(10,))
+    t2 = Thread(target=print_cube, args=(10,))
  
     #t_calibration.start()
     t1.start()

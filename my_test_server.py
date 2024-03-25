@@ -3,8 +3,8 @@
 import socket
 import time
 
-HOST = "192.168.100.30" 
-PORT = 34567
+HOST = "192.168.26.129" 
+PORT = 30002
 
 print("Start listening...")
  
@@ -14,6 +14,7 @@ while True:
     s.bind((HOST, PORT))        # Bind to the port 
     s.listen(5)                 # Now wait for client connection.
     c, addr = s.accept()        # Establish connection with client.
+    s.serve_forever()
 
     try:
         msg = c.recv(1024)
