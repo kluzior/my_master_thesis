@@ -41,10 +41,10 @@ def main():
     consumer_thread.start()
 
     # wait for all tasks to be added to the queue
-    #producer_thread.join()
+    producer_thread.join()
 
     # wait for all tasks on the queue to be completed
-    #queue.join()
+    queue.join()
 
 
 if __name__ == '__main__':

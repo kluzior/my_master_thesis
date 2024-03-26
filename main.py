@@ -3,6 +3,7 @@ from threading import Thread
 
 from packages.logger_configuration import configure_logger
 from packages.photo_recognitions.main import calibrate_camera
+from packages.communication.server_with_queues import start_server
 
 import logging
 
@@ -23,11 +24,22 @@ def print_square(num):
 
  
 if __name__ =="__main__":
+    # Queues for communication with the robot
+    queue_from_robot = Queue(maxsize = 10)
+    queue_to_robot = Queue()
+    
+    
     configure_logger()
 
-    #t_calibration = Thread(target=calibrate_camera)
-    calibrate_camera()
+    #start_server()
+    t_server = Thread(target=start_server, args=(queue_from_robot, queue_to_robot))
+    t_server.start()
     
+    #t_calibration = Thread(target=calibrate_camera)
+    #calibrate_camera()
+    t_calibration = Thread(target=calibrate_camera, args=())
+    t_calibration.start()
+
     # test threading
     t1 = Thread(target=print_square, args=(10,))
     t2 = Thread(target=print_cube, args=(10,))
@@ -39,7 +51,8 @@ if __name__ =="__main__":
     #t_calibration.join()
     t1.join()
     t2.join()
- 
+    t_server.join()
+
     logging.getLogger('logger').debug("test")
 
 
