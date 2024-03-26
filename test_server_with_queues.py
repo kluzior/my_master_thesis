@@ -28,6 +28,7 @@ def handle_robot(sock, robot_address):
             data = sock.recv(1024).decode()
             if not data:  # Handle empty data or connection closure
                 print(f"Robot {robot_address} disconnected")
+                start_server()
                 break
             data_from_robot.put(data)  # Add received data to the queue
 
@@ -65,7 +66,7 @@ def start_server():
             # Create a separate thread for each robot connection
             robot_thread = threading.Thread(target=handle_robot, args=(conn, robot_address))
             robot_thread.start()
-            print("i'm in while true")
+            #print("i'm in while true")
             print(f'queue size: {data_from_robot.qsize()}')
             
            
