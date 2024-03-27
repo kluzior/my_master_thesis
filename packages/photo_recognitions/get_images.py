@@ -1,8 +1,7 @@
 import cv2
 import logging
-import os
+
 from packages.store import save_image
-#from packages.boxes import drawBoxes
 
 def get_images(write_path=''):
 
@@ -15,23 +14,20 @@ def get_images(write_path=''):
         _, img = cap.read()
         k = cv2.waitKey(5)
 
-        if k == 27:
+        if k == 27:                                     # wait for 'Esc' key to save
+            logging.getLogger('logger').debug(f'user pressed Esc key')
             break
-        elif k == ord('s'): # wait for 's' key to save and exit
-            save_image(write_path, num, img)   
+        elif k == ord('s'):                             # wait for 's' key to save
             images.append(img)
-            logging.getLogger('logger').debug(f'captured photo no {num}')
+            save_image(write_path, num, img)   
+            logging.getLogger('logger').debug(f'captured photo no. {num}')
             num += 1
         
-        cv2.imshow('Img',img)
+        cv2.imshow('Camera',img)
 
     cap.release()   
     cv2.destroyAllWindows()
     logging.getLogger('logger').info(f'captured {num} photos')
-
+    logging.getLogger('logger').debug(f'exit get_images() program')
+    
     return images
-
-if __name__ == "__main__":
-    #from ...save_image import save_image
-
-    get_images()
