@@ -4,6 +4,7 @@ from threading import Thread
 from packages.logger_configuration import configure_logger
 from packages.photo_recognitions.main import calibrate_camera
 from packages.communication.server_with_queues import start_server
+from packages.communication.queue_dummy import dummy_queue_print
 
 import logging
 
@@ -37,6 +38,8 @@ if __name__ =="__main__":
     
     t_calibration = Thread(target=calibrate_camera, args=())
     t_calibration.start()
+    
+    t_dummy_queue = Thread(target=dummy_queue_print, args=(queue_from_robot, queue_to_robot))
 
     # test threading
     t1 = Thread(target=print_square, args=(10,))
@@ -44,7 +47,8 @@ if __name__ =="__main__":
  
     t1.start()
     t2.start()
- 
+    t_dummy_queue.start()
+    t_dummy_queue.join()
     t_calibration.join()
     t1.join()
     t2.join()
