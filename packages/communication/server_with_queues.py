@@ -1,6 +1,5 @@
 import socket
 import threading
-#from queue import Queue
 import logging
 
 # Server configuration 
