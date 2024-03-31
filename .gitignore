@@ -161,4 +161,7 @@ cython_debug/
 
 # images & params
 *.png
+*.jpg
 *.npz
+test_opencv_algoritms/
+test_functions/

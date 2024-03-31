@@ -12,20 +12,6 @@ import logging
 
 is_camera_calibrated = 0
  
-
-# test - to delete
-def print_cube(num):
-    for i in range(10):
-        print("Cube: {}" .format(num * num * num))
-        print(f'cube {i}')
- 
-# test - to delete
-def print_square(num):
-    for i in range(10):
-        print("Square: {}" .format(num * num))
-        print(f'square {i}')
-
-
 def dummy_queue_print(queue_from_robot, queue_to_robot):
     while True:
         if not queue_from_robot.empty():
@@ -43,10 +29,6 @@ if __name__ =="__main__":
     
     configure_logger()
 
-    #start_server()
-    # t_server = Thread(target=start_server, args=(queue_from_robot, queue_to_robot))
-    # t_server.start()
-
     serverObj = Server()
     t_server_class = Thread(target=serverObj.start_server, args=(queue_from_robot, queue_to_robot))
     t_server_class.start()  
@@ -59,19 +41,10 @@ if __name__ =="__main__":
     t_calibration.start()
     
 
-    # test threading
-    # t1 = Thread(target=print_square, args=(10,))
-    # t2 = Thread(target=print_cube, args=(10,))
- 
-    # t1.start()
-    # t2.start()
-
-
     t_dummy_queue.join()
     t_calibration.join()
-    # t1.join()
-    # t2.join()
-    # t_server.join()
+
+
     t_server_class.join()
     serverObj.robot_thread.join()
 

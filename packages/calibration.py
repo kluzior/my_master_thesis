@@ -6,7 +6,12 @@ import numpy as np
 
 class calibrateCamera:
 
-    def __init__(self) -> None:
+    def __init__(self, camera_idx = 0) -> None:
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'calibrateCamera({self}) was initialized.')
+
+        self.camera_idx = camera_idx
         self.max_iter = 30, 
         self.min_accuracy = 0.001
         self.chess_size = (8,6)
@@ -17,26 +22,26 @@ class calibrateCamera:
     def get_images(self, write_path=''):
         self.images = []
 
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(self.camera_idx)
         num = 0
         while cap.isOpened():
             _, img = cap.read()
             k = cv2.waitKey(5)
             if k == 27:                                     # wait for 'Esc' key to save
-                logging.getLogger('logger').debug(f'user pressed Esc key')
+                self._logger.debug(f'user pressed Esc key')
                 break
             elif k == ord('s'):                             # wait for 's' key to save
                 self.images.append(img)
                 save_image(write_path, num, img)   
-                logging.getLogger('logger').debug(f'captured photo no. {num}')
+                self._logger.debug(f'captured photo no. {num}')
                 num += 1
             
             cv2.imshow('Camera', img)
 
         cap.release()   
         cv2.destroyAllWindows()
-        logging.getLogger('logger').info(f'captured {num} photos')
-        logging.getLogger('logger').debug(f'exit get_images() program')
+        self._logger.info(f'captured {num} photos')
+        self._logger.debug(f'exit get_images() program')
         
 
     def calc_camera_params(self, write_path = ''):
@@ -63,7 +68,7 @@ class calibrateCamera:
                 imgpoints.append(corners2) 
                 cv2.drawChessboardCorners(img, self.chess_size, corners2, ret)             
                 save_image(write_path, num, img)   
-                logging.getLogger('logger').debug(f'photo {num} analyzed!')
+                logging.debug(f'photo {num} analyzed!')
                 num += 1 
 
                 #cv2.waitKey(1000)
@@ -71,11 +76,11 @@ class calibrateCamera:
 
         ret, self.cameraMatrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
 
-        logging.getLogger('logger').info('Camera Calibrated!')
-        logging.getLogger('logger').debug(f'Calculated camera matrix: {self.cameraMatrix}')
-        logging.getLogger('logger').debug(f"Calculated distortion parameters: {self.distortion_params}")
-        logging.getLogger('logger').debug(f'Calculated rotation vectors: {rvecs}')
-        logging.getLogger('logger').debug(f'Calculated translation vectors: {tvecs}')
+        self._logger.info('Camera Calibrated!')
+        self._logger.debug(f'Calculated camera matrix: {self.cameraMatrix}')
+        self._logger.debug(f"Calculated distortion parameters: {self.distortion_params}")
+        self._logger.debug(f'Calculated rotation vectors: {rvecs}')
+        self._logger.debug(f'Calculated translation vectors: {tvecs}')
 
         # calculate reprojection error
         mean_error = 0 
@@ -84,7 +89,7 @@ class calibrateCamera:
             error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
             mean_error += error 
         error_value = mean_error/len(objpoints)
-        logging.getLogger('logger').info(f'total reprojection error: {error_value}')
+        self._logger.info(f'total reprojection error: {error_value}')
 
     def undistort_images(self, write_path=''):
     
@@ -107,7 +112,7 @@ class calibrateCamera:
 
     def run(self):
 
-        logging.getLogger('logger').debug(f'start capturing calibration photos!')
+        self._logger.debug(f'start capturing calibration photos!')
         
         self.get_images(write_path = 'captured')
         
@@ -115,11 +120,11 @@ class calibrateCamera:
         #     cv2.imshow('img', img)
         #     cv2.waitKey(1000)
 
-        logging.getLogger('logger').debug(f'start calculation calibration parameters!')
+        self._logger.debug(f'start calculation calibration parameters!')
         # self.calc_camera_params( write_path = 'with_chess')
 
         
-        logging.getLogger('logger').debug(f'start test undistortion!')                          
+        self._logger.debug(f'start test undistortion!')                          
         # undistorted_images = undistort_images(
         #                         images = captured_images, 
         #                         camera_matrix = camera_matrix, 
