@@ -1,9 +1,10 @@
 from queue import Queue 
 from threading import Thread 
+import time
 
 from packages.logger_configuration import configure_logger
-from packages.communication.server_with_queues import start_server
-from packages.communication.queue_dummy import dummy_queue_print
+from packages.server_with_queues_class import Server
+
 
 from packages.calibration import calibrateCamera
 
@@ -24,6 +25,15 @@ def print_square(num):
         print("Square: {}" .format(num * num))
         print(f'square {i}')
 
+
+def dummy_queue_print(queue_from_robot, queue_to_robot):
+    while True:
+        if not queue_from_robot.empty():
+            data = queue_from_robot.get()
+            print(f'data from queue: {data}')
+            print(f'queue size (inside): {queue_from_robot.qsize()}')
+            time.sleep(1)        
+
  
 if __name__ =="__main__":
     # Queues for communication with the robot
@@ -34,8 +44,12 @@ if __name__ =="__main__":
     configure_logger()
 
     #start_server()
-    t_server = Thread(target=start_server, args=(queue_from_robot, queue_to_robot))
-    t_server.start()
+    # t_server = Thread(target=start_server, args=(queue_from_robot, queue_to_robot))
+    # t_server.start()
+
+    serverObj = Server()
+    t_server_class = Thread(target=serverObj.start_server, args=(queue_from_robot, queue_to_robot))
+    t_server_class.start()  
     
     t_dummy_queue = Thread(target=dummy_queue_print, args=(queue_from_robot, queue_to_robot))
     t_dummy_queue.start()
@@ -52,12 +66,14 @@ if __name__ =="__main__":
     # t1.start()
     # t2.start()
 
-    
+
     t_dummy_queue.join()
     t_calibration.join()
     # t1.join()
     # t2.join()
-    t_server.join()
+    # t_server.join()
+    t_server_class.join()
+    serverObj.robot_thread.join()
 
     logging.getLogger('logger').debug("test")
 
