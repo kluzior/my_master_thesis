@@ -6,7 +6,7 @@ import numpy as np
 
 class calibrateCamera:
 
-    def __init__(self, camera_idx = 0) -> None:
+    def __init__(self, camera_idx = 1) -> None:
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'calibrateCamera({self}) was initialized.')
