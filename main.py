@@ -4,6 +4,7 @@ import time
 
 from packages.logger_configuration import configure_logger
 from packages.server_with_queues_class import Server
+from packages.camera import Camera
 
 
 from packages.calibration import calibrateCamera
@@ -26,6 +27,7 @@ if __name__ =="__main__":
     queue_from_robot = Queue(maxsize = 10)
     queue_to_robot = Queue()
     
+    myCamera = Camera(index=0)
     
     configure_logger()
 
@@ -36,7 +38,7 @@ if __name__ =="__main__":
     t_dummy_queue = Thread(target=dummy_queue_print, args=(queue_from_robot, queue_to_robot))
     t_dummy_queue.start()
 
-    obj = calibrateCamera()
+    obj = calibrateCamera(myCamera.index)
     t_calibration = Thread(target=obj.run(), args=())
     t_calibration.start()
     

@@ -1,17 +1,17 @@
 from packages.store import save_image
-
+from packages.camera import Camera
 import cv2
 import logging
 import numpy as np
 
-class calibrateCamera:
+class calibrateCamera(Camera):
 
-    def __init__(self, camera_idx = 1) -> None:
+    def __init__(self, camera_index):
+        super().__init__(camera_index)  # Call parent class constructor
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'calibrateCamera({self}) was initialized.')
 
-        self.camera_idx = camera_idx
         self.max_iter = 30, 
         self.min_accuracy = 0.001
         self.chess_size = (8,6)
@@ -22,7 +22,7 @@ class calibrateCamera:
     def get_images(self, write_path=''):
         self.images = []
 
-        cap = cv2.VideoCapture(self.camera_idx)
+        cap = cv2.VideoCapture(self.index)
         num = 0
         while cap.isOpened():
             _, img = cap.read()
@@ -45,8 +45,8 @@ class calibrateCamera:
         
 
     def calc_camera_params(self, write_path = ''):
-        self.camera_matrix = 0
-        self.distortion_params = 0
+        self.camera_matrix = None
+        self.distortion_params = None
 
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, self.max_iter, self.min_accuracy)
 
@@ -74,10 +74,13 @@ class calibrateCamera:
                 #cv2.waitKey(1000)
         #cv2.destroyAllWindows()
 
-        ret, self.cameraMatrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
+        ret, self.camera_matrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
+
+        self.set_calibration(self.camera_matrix, self.distortion_params)
+
 
         self._logger.info('Camera Calibrated!')
-        self._logger.debug(f'Calculated camera matrix: {self.cameraMatrix}')
+        self._logger.debug(f'Calculated camera matrix: {self.camera_matrix}')
         self._logger.debug(f"Calculated distortion parameters: {self.distortion_params}")
         self._logger.debug(f'Calculated rotation vectors: {rvecs}')
         self._logger.debug(f'Calculated translation vectors: {tvecs}')
@@ -85,7 +88,7 @@ class calibrateCamera:
         # calculate reprojection error
         mean_error = 0 
         for i in range(len(objpoints)):
-            imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], self.cameraMatrix, self.dist)
+            imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], self.camera_matrix, self.distortion_params)
             error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
             mean_error += error 
         error_value = mean_error/len(objpoints)
