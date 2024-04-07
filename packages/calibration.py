@@ -123,7 +123,7 @@ class calibrateCamera(Camera):
         self._logger.debug(f'start calculation calibration parameters!')
         # self.calc_camera_params( write_path = 'with_chess')
 
-        self.set_calibrated_intrinsics(self.camera_matrix, self.distortion_params)
+        # self.set_calibrated_intrinsics(self.camera_matrix, self.distortion_params)
         
         self._logger.debug(f'start test undistortion!')                          
         # undistorted_images = undistort_images(
