@@ -12,7 +12,7 @@ class Camera:
         self._logger.debug(f'Camera({self}) was initialized.')
         
 
-    def set_calibration(self, matrix, distortion):
+    def set_calibrated_intrinsics(self, matrix, distortion):
         self.matrix = matrix
         self.distortion = distortion
         self._logger.debug(f'new camera parameters was saved!')

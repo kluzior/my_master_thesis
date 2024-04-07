@@ -76,9 +76,6 @@ class calibrateCamera(Camera):
 
         ret, self.camera_matrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
 
-        self.set_calibration(self.camera_matrix, self.distortion_params)
-
-
         self._logger.info('Camera Calibrated!')
         self._logger.debug(f'Calculated camera matrix: {self.camera_matrix}')
         self._logger.debug(f"Calculated distortion parameters: {self.distortion_params}")
@@ -126,6 +123,7 @@ class calibrateCamera(Camera):
         self._logger.debug(f'start calculation calibration parameters!')
         # self.calc_camera_params( write_path = 'with_chess')
 
+        self.set_calibrated_intrinsics(self.camera_matrix, self.distortion_params)
         
         self._logger.debug(f'start test undistortion!')                          
         # undistorted_images = undistort_images(
