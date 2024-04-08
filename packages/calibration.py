@@ -12,9 +12,9 @@ class calibrateCamera(Camera):
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'calibrateCamera({self}) was initialized.')
 
-        self.max_iter = 30, 
+        self.max_iter = 30
         self.min_accuracy = 0.001
-        self.chess_size = (8,6)
+        self.chess_size = (9,6)
         self.frame_size = (640,480)
         self.square_size = 23
 
@@ -49,7 +49,7 @@ class calibrateCamera(Camera):
         self.distortion_params = None
 
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, self.max_iter, self.min_accuracy)
-
+        print(f'criteria: {criteria}')
         objp = np.zeros((self.chess_size[0] * self.chess_size[1], 3), np.float32)
         objp[:,:2] = np.mgrid[0:self.chess_size[0],0:self.chess_size[1]].T.reshape(-1,2)
         objp = objp * self.square_size
@@ -59,7 +59,10 @@ class calibrateCamera(Camera):
         num = 0
 
         for image in self.images:
-            img = cv2.imread(image) 
+            img = image
+
+            cv2.imshow('img', img)
+            cv2.waitKey(1000)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
             ret, corners = cv2.findChessboardCorners(gray, self.chess_size, None)
             if ret == True:
@@ -95,8 +98,7 @@ class calibrateCamera(Camera):
     
         num = 0 
         self.undistorted_images = []
-        for image in self.images:
-            img = cv2.imread(image) 
+        for img in self.images:
             h, w = img.shape[:2] 
 
             newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(self.camera_matrix, self.distortion_params, (w,h), 1, (w,h))
@@ -121,16 +123,11 @@ class calibrateCamera(Camera):
         #     cv2.waitKey(1000)
 
         self._logger.debug(f'start calculation calibration parameters!')
-        # self.calc_camera_params( write_path = 'with_chess')
+        self.calc_camera_params(write_path = 'with_chess')
 
-        # self.set_calibrated_intrinsics(self.camera_matrix, self.distortion_params)
+        self.set_calibrated_intrinsics(self.camera_matrix, self.distortion_params)
         
-        self._logger.debug(f'start test undistortion!')                          
-        # undistorted_images = undistort_images(
-        #                         images = captured_images, 
-        #                         camera_matrix = camera_matrix, 
-        #                         dist = distortion_params, 
-        #                         write_path = 'with_chess'
-        #                         )
+        self._logger.debug(f'start test undistortion!')  
 
-        #return undistorted_images
+        self.undistort_images(write_path = 'undistorted')                       
+
