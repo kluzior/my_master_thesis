@@ -79,6 +79,9 @@ class calibrateCamera(Camera):
 
         ret, self.camera_matrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
 
+        # Zapis wyników kalibracji do pliku
+        np.savez("./CameraParams", cameraMatrix=self.camera_matrix, dist=self.distortion_params)
+
         self._logger.info('Camera Calibrated!')
         self._logger.debug(f'Calculated camera matrix: {self.camera_matrix}')
         self._logger.debug(f"Calculated distortion parameters: {self.distortion_params}")

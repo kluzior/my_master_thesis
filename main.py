@@ -27,7 +27,7 @@ if __name__ =="__main__":
     queue_from_robot = Queue(maxsize = 10)
     queue_to_robot = Queue()
     
-    myCamera = Camera(index=0)
+    myCamera = Camera(index=1)
     
     configure_logger()
 
