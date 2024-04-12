@@ -5,43 +5,36 @@ import pandas as pd
 import math
 import glob
 
-def detect_objects(frame):
+def detect_objects(frame, min_area=8000):
     # Convert Image to grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Create a Mask with adaptive threshold
-    mask = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 7, 5)
-    cv2.imshow('mask', mask); cv2.waitKey(1000)
+    # mask = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 7, 5)
+    _, mask = cv2.threshold(gray,200,255,cv2.THRESH_BINARY)
+    cv2.imshow('mask', mask); cv2.waitKey(500)
     # Find contours
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     
-    objects_contours = []
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area > 8000:
-            objects_contours.append(cnt)
+    objects_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_area]
 
     return objects_contours
 
-def detect_aruco(frame):
-    corners, _, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
+def detect_aruco(frame, aruco_edge_cm):
+    aruco_corners, _, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
 
     # Draw polygon around the marker
-    int_corners = np.intp(corners)
-    cv2.polylines(frame, int_corners, True, (0, 255, 0), 5)
+    cv2.polylines(frame, np.intp(aruco_corners), True, (0, 255, 0), 5)
 
-    cv2.imshow('img2', frame); cv2.waitKey(1000)
+    # cv2.imshow('img2', frame); cv2.waitKey(500)
 
-    # Aruco Perimeter
-    aruco_perimeter = cv2.arcLength(corners[0], True)
-    print(aruco_perimeter)
-    # Pixel to cm ratio
-    pixel_cm_ratio = aruco_perimeter / 8
+    # Aruco Perimeter - pixel to cm ratio
+    pixel_cm_ratio = cv2.arcLength(aruco_corners[0], True) / (4*aruco_edge_cm)
 
     return pixel_cm_ratio
 
 def get_hu_reference():
-    ref = cv2.imread("./images/captured_9_04/reference/wielokat.png")
+    ref = cv2.imread("./images/captured_9_04/reference/kwadrat.png")
     cv2.imshow('ref', ref); cv2.waitKey(1000)
 
     contour_reference = detect_objects(ref)
@@ -54,22 +47,13 @@ def get_hu_reference():
     hu_reference = cv2.HuMoments(M)
     return contour_reference[0], hu_reference
 
-# def undistort_images(images, camera_matrix, distortion_params):
-    
-#     # undistorted_images = []
-#     undistorted_image = None
-
-#     for img in images:
-#         h, w = img.shape[:2] 
-
-#         newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, distortion_params, (w,h), 1, (w,h))
-
-#         dst = cv2.undistort(img, camera_matrix, distortion_params, None, newCameraMatrix)
-#         # x, y, w, h = roi
-#         # dst = dst[y:y+h, x:x+w] 
-#         # undistorted_images.append(img)
-#         undistorted_image = img
-#         return undistorted_image
+def undistort_frame(frame, mtx, distortion):
+    h, w = frame.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, distortion, (w,h), 1, (w,h))
+    undst = cv2.undistort(img, mtx, distortion, None, newcameramtx)
+    # x, y, w, h = roi                  # disable roi cut to not lose object detection
+    # undst = undst[y:y+h, x:x+w]
+    return undst
 
 cont_ref, hu_ref = get_hu_reference()
 
@@ -92,30 +76,18 @@ for i in images:
 
     cv2.imshow('i', img); cv2.waitKey(1000)
 
-    # img = cv2.imread("C:/Users/kluziak/Downloads/measure_object_size/6.png")
-    # print(f'img1 = {img}')
-    # cv2.imshow('img', img); cv2.waitKey(1000)
-
-    # undistort HERE
-    # h, w = img.shape[:2]
-    # newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, distortion, (w,h), 1, (w,h))
-    # dst = cv2.undistort(img, mtx, distortion, None, newcameramtx)
-    # # x, y, w, h = roi
-    # # dst = dst[y:y+h, x:x+w]
-    # cv2.imwrite('calibresult.png', dst)
-    # img = dst
-    # print(f'img2 = {img}')
-    # cv2.imshow('dst', img); cv2.waitKey(1000)
-
+    # undistort image
+    uimg = undistort_frame(img, mtx, distortion)
+    
     # Get Aruco marker
-    pixel_cm_ratio = detect_aruco(img)
+    pixel_cm_ratio = detect_aruco(uimg, 2)
 
 
-    contours = detect_objects(img)
+    contours = detect_objects(uimg)
 
     # cv2.polylines(img, contours, True, (255, 0, 0), 3)
 
-    cv2.imshow('img3', img); cv2.waitKey(1000)
+    cv2.imshow('img3', uimg); cv2.waitKey(1000)
 
     # hu ref
     # cont_ref, hu_ref = get_hu_reference()
@@ -136,14 +108,14 @@ for i in images:
     
         retval = cv2.matchShapes(contour,cont_ref,cv2.CONTOURS_MATCH_I2,0)
         print(f'retval: {retval}')
-        if  retval < 0.02:
-            cv2.polylines(img, contour, True, (0, 0, 255), 3)
+        if  retval < 0.001:
+            cv2.polylines(uimg, contour, True, (0, 0, 255), 3)
             print("zgoda!")
         else:
-            cv2.polylines(img, contour, True, (255, 0, 0), 3)
+            cv2.polylines(uimg, contour, True, (255, 0, 0), 3)
             pass
 
-        cv2.imshow('in_for', img); cv2.waitKey(1000)
+        cv2.imshow('in_for', uimg); cv2.waitKey(1000)
 
 
         # d1 = cv2.matchShapes(im1,im2,cv2.CONTOURS_MATCH_I1,0) - używa hu momemts do porównania dwóch obiektów
@@ -166,12 +138,12 @@ for i in images:
         obw = (cv2.arcLength(contour, True)/pixel_cm_ratio)
         area = (cv2.contourArea(contour)/(pixel_cm_ratio**2))
 
-        cv2.putText(img, "Obwod: {} cm".format(round(obw, 1)), (int(cx - 100), int(cy - 30)), cv2.FONT_HERSHEY_PLAIN, 2, (100, 200, 0), 2)
-        cv2.putText(img, "Pole: {} cm2".format(round(area, 1)), (int(cx - 100), int(cy + 30)), cv2.FONT_HERSHEY_PLAIN, 2, (100, 200, 0), 2)
+        cv2.putText(uimg, "Obwod: {} cm".format(round(obw, 1)), (int(cx - 100), int(cy - 30)), cv2.FONT_HERSHEY_PLAIN, 2, (100, 200, 0), 2)
+        cv2.putText(uimg, "Pole: {} cm2".format(round(area, 1)), (int(cx - 100), int(cy + 30)), cv2.FONT_HERSHEY_PLAIN, 2, (100, 200, 0), 2)
         j += 1
 
     # Display the results
-    cv2.imshow('img4', img)
-    cv2.imwrite(f'contour_test/test_photo_{num}.png', img)
+    cv2.imshow('img4', uimg)
+    cv2.imwrite(f'contour_test/test_photo_{num}.png', uimg)
     cv2.waitKey(1000)
     num += 1

@@ -35,7 +35,7 @@ def detect_objects(frame, mask_name='', min_area=8000):
 #PLAN:
 
 # 1) Get reference
-ref = cv2.imread("./images/captured_9_04/reference/trojkat.png")
+ref = cv2.imread("./images/captured_9_04/reference/kwadrat.png")
 cv2.imshow('ref', ref); cv2.waitKey(500)
 
 contour_reference = detect_objects(ref, 'contour_test/reference_mask')
@@ -65,9 +65,9 @@ for i in images:
         # Calculate Hu Moments
         hu_M = cv2.HuMoments(M)
     
-        retval = cv2.matchShapes(contour, contour_reference[0], cv2.CONTOURS_MATCH_I1, 0)
+        retval = cv2.matchShapes(contour, contour_reference[0], cv2.CONTOURS_MATCH_I3, 0)
         print(f'retval: {retval}')
-        if  retval < 0.01:
+        if  retval < 0.001:
             cv2.polylines(img, contour, True, (0, 0, 255), 3)
         else:
             cv2.polylines(img, contour, True, (255, 0, 0), 3)
