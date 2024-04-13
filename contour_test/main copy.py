@@ -41,7 +41,7 @@ def detect_aruco(frame):
     return pixel_cm_ratio
 
 def get_hu_reference():
-    ref = cv2.imread("./images/captured_9_04/reference/wielokat.png")
+    ref = cv2.imread("./images/ALL_CONTOURS/reference/wielokat.png")
     cv2.imshow('ref', ref); cv2.waitKey(1000)
 
     contour_reference = detect_objects(ref)
@@ -85,7 +85,7 @@ print("\nLoaded camera Matrix: \n", mtx)
 print("\nLoaded distortion Parameters: \n", distortion)
 
 # Load Images
-images = glob.glob('./images/captured_9_04/filtered/*.png')
+images = glob.glob('./images/ALL_CONTOURS/*.png')
 num = 0
 for i in images:
     img = cv2.imread(i)
