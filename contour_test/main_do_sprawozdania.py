@@ -1,9 +1,9 @@
 import cv2
-# from object_detector import *
 import numpy as np
 import math
 import glob
 from statistics import mean
+import time
 
 def undistort_frame(frame, mtx, distortion):
     h, w = frame.shape[:2]
@@ -23,7 +23,10 @@ def detect_objects(frame, ref_name, min_area=8000, save_mask=False, binarization
         mask = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 7, 5)
 
     if binarization == 'canny':             # 3) test of canny edge detection
-        blurred_image = cv2.GaussianBlur(gray.copy(),(5,5),0); mask = cv2.Canny(blurred_image, 100, 180)
+        blur = cv2.GaussianBlur(gray.copy(),(5,5),0); mask = cv2.Canny(blur, 50, 150)
+
+    if binarization == 'otsu':
+        blur = cv2.GaussianBlur(gray,(5,5),0); _, mask = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
     cv2.imshow('mask', mask); cv2.waitKey(100)
     if save_mask:
@@ -36,10 +39,9 @@ def detect_objects(frame, ref_name, min_area=8000, save_mask=False, binarization
 
 
 def detect_aruco(frame, aruco_edge_cm):
-    parameters = cv2.aruco.DetectorParameters()
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
 
-    aruco_corners, _, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
+    aruco_corners, _, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=cv2.aruco.DetectorParameters())
 
     cv2.polylines(frame, np.intp(aruco_corners), True, (0, 255, 0), 5)      # mark detected aruco
 
@@ -111,7 +113,7 @@ def run_contour_detection(reference_name, binarization_type):
             retval2 = cv2.matchShapes(contour, cont_ref, cv2.CONTOURS_MATCH_I2, 0);             retval.append(retval2)
             retval3 = cv2.matchShapes(contour, cont_ref, cv2.CONTOURS_MATCH_I3, 0);             retval.append(retval3)
 
-            if  mean(retval) < 0.002:
+            if  mean(retval) < 0.004:
                 cv2.polylines(img_detection, contour, True, (0, 0, 255), 3)
             else:
                 cv2.polylines(img_detection, contour, True, (255, 0, 0), 3)
@@ -133,8 +135,7 @@ def run_contour_detection(reference_name, binarization_type):
 if __name__ == "__main__":
 
     reference_names = ['kwadrat', 'szesciokat', 'wielokat', 'trojkat', 'okrag']
-    binarization_types = ['standard', 'adaptive', 'canny']
-
+    binarization_types = ['standard', 'adaptive', 'otsu', 'canny']
 
     for reference_name in reference_names:
         for binarization_type in binarization_types:
