@@ -12,7 +12,7 @@ from packages.calibration import calibrateCamera
 import logging
 
 is_camera_calibrated = 0
- 
+
 def dummy_queue_print(queue_from_robot, queue_to_robot):
     while True:
         if not queue_from_robot.empty():
@@ -21,13 +21,13 @@ def dummy_queue_print(queue_from_robot, queue_to_robot):
             print(f'queue size (inside): {queue_from_robot.qsize()}')
             time.sleep(1)        
 
- 
+
 if __name__ =="__main__":
     # Queues for communication with the robot
     queue_from_robot = Queue(maxsize = 10)
     queue_to_robot = Queue()
     
-    myCamera = Camera(index=1)
+    myCamera = Camera(index=0)
     
     configure_logger()
 
