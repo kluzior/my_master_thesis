@@ -1,5 +1,5 @@
 import numpy as np
-from common import skew, solveSVD, get_RX_tX
+from common import skew, solveSVD, get_RX_tX, getRotation
 
 
 def calibrate(A_list, B_list):
@@ -31,5 +31,7 @@ def calibrate(A_list, B_list):
 
     Rx_tX = solveSVD(S)
     Rx, tX = get_RX_tX(Rx_tX)
+
+    Rx = getRotation(Rx)
 
     return Rx, tX.reshape(3,1)

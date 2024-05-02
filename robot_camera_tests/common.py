@@ -64,3 +64,8 @@ def generate_input_data(n):
         matrix[3, 3] = 1
         matrices.append(matrix)
     return matrices
+
+def getRotation(Rx):
+    '''Get the rotation matrix that satisfy othorgonality'''
+    u,s,v = svd(Rx)
+    return np.dot(u,v)
