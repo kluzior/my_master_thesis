@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg import inv, svd, norm, pinv
 from scipy.spatial.transform import Rotation as Rot
-
+import cv2
 
 def skew(x):
     x = x.ravel()
@@ -69,3 +69,7 @@ def getRotation(Rx):
     '''Get the rotation matrix that satisfy othorgonality'''
     u,s,v = svd(Rx)
     return np.dot(u,v)
+
+def skew2(x):
+    y = cv2.Rodrigues(x)
+    return y[0]

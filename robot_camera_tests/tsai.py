@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
-from common import skew, solveLS, R_2_angle_axis, get_Translation
+from common import skew, solveLS, R_2_angle_axis, get_Translation, skew2
 
 def calibrate(A_list, B_list):
     N = len(A_list)
@@ -17,7 +17,7 @@ def calibrate(A_list, B_list):
 
         RA = An[:3,:3]
         tA = An[:3,3].reshape(3,1)
-        tA_ = skew(tA)
+        tA_ = skew2(tA)
         RB = Bn[:3,:3]
         tB = Bn[:3,3].reshape(3,1)
 
@@ -25,7 +25,7 @@ def calibrate(A_list, B_list):
         uA, wA = R_2_angle_axis(RA)
         uB, wB = R_2_angle_axis(RB)
 
-        _S = skew(uA + uB)
+        _S = skew2(uA + uB)
         _T = uB - uA 
 
         _RA_I = RA - np.eye(3)
@@ -43,7 +43,7 @@ def calibrate(A_list, B_list):
     ux = solveLS(S,T)    
     uX = 2*ux/(np.sqrt(1+norm(ux)**2))
     
-    Rx = (1-norm(uX)**2/2)*np.eye(3) + 0.5*(uX*uX.T + np.sqrt(4-norm(uX)**2)*skew(uX))
+    Rx = (1-norm(uX)**2/2)*np.eye(3) + 0.5*(uX*uX.T + np.sqrt(4-norm(uX)**2)*skew2(uX))
     
     tX = get_Translation(Rx,RA_I,TA,TB)
 

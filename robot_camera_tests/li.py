@@ -1,5 +1,5 @@
 import numpy as np
-from common import skew, solveSVD, get_RX_tX, getRotation
+from common import skew, solveSVD, get_RX_tX, getRotation, skew2
 
 
 def calibrate(A_list, B_list):
@@ -16,7 +16,7 @@ def calibrate(A_list, B_list):
         
         RA = An[:3,:3]
         tA = An[:3,3].reshape(3,1)
-        tA_ = skew(tA)
+        tA_ = skew2(tA)
         RB = Bn[:3,:3]
         tB = Bn[:3,3].reshape(3,1)
 
