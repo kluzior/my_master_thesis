@@ -37,26 +37,17 @@ def apply_binarization(gray, binarization='standard'):
         raise ValueError("Unknown binarization method")
     return mask
 
+def is_aruco_inside_bbox(x, y, w, h, aruco_corners):
+    for corner in aruco_corners:
+        for point in corner[0]:
+            px, py = point
+            if x <= int(px) <= x + w and y <= int(py) <= y + h:
+                return True
+    return False
 
-
-def crop_image(image, margin=1, image_raw=None):
+def crop_image(image, margin=1, image_raw=None, aruco_corners=None):
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
-
-    # Ignore aruco
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
-    aruco_corners, _, _ = cv2.aruco.detectMarkers(image, aruco_dict, parameters=cv2.aruco.DetectorParameters())
-
-    # Check if any aruco corner is inside the contour
-    def is_aruco_inside_contour(contour, aruco_corners):
-        for corner in aruco_corners:
-            for point in corner[0]:
-                if cv2.pointPolygonTest(contour, tuple(point), False) >= 0:
-                    return True
-        return False
-
-    # Filter out contours containing aruco markers
-    contours = [cnt for cnt in contours if not is_aruco_inside_contour(cnt, aruco_corners)]
 
     cropped_images = []
     cropped_raw_images = []
@@ -68,6 +59,10 @@ def crop_image(image, margin=1, image_raw=None):
         y = max(0, y - margin)
         w = min(image.shape[1] - x, w + 2 * margin)
         h = min(image.shape[0] - y, h + 2 * margin)
+        # Check if any aruco marker is inside the bounding box
+        if aruco_corners is not None:
+            if is_aruco_inside_bbox(x, y, w, h, aruco_corners):
+                continue
 
         mask = np.zeros_like(image)
         cv2.drawContours(mask, [contour], 0, 255, thickness=cv2.FILLED)
@@ -92,10 +87,15 @@ def prepare_image(image_path):
         return
     # undistort
     uimg = undistort_frame(img, mtx, distortion)
+    
+    # Ignore aruco
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
+    aruco_corners, _, _ = cv2.aruco.detectMarkers(uimg, aruco_dict, parameters=cv2.aruco.DetectorParameters())
+    print(f'aruco_corners: {aruco_corners}')    
     # binarize
     buimg = apply_binarization(uimg, 'standard')
     # find contour + crop
-    objects, coordinates, _ = crop_image(buimg)
+    objects, coordinates, _ = crop_image(buimg, aruco_corners=aruco_corners)
     # save
     return objects, coordinates
 
