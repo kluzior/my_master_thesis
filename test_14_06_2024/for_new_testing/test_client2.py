@@ -22,9 +22,10 @@ class TestClient:
                 if command == "give_pose":
                     pose = "p[-0.187702, 0.27884, -0.237913, -3.11466, -0.410051, -3.8586e-06]"
                     self.client_socket.sendall(pose.encode('utf-8'))
-                elif command.startswith("move_to"):
+                elif command.startswith("("):
                     print(f"Komenda ruchu: {command}")
-                    self.client_socket.sendall(b"move_to OK")
+                    time.sleep(5)
+                    self.client_socket.sendall(b"moveL OK")
                 else:
                     print(f"Nieznana komenda: {command}")
         except KeyboardInterrupt:

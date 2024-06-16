@@ -3,7 +3,7 @@ import re
 import threading
 import time
 
-class RobotServer(threading.Thread):
+class ServerThread(threading.Thread):
     def __init__(self, host, port):
         super().__init__()
         self.host = host
@@ -22,11 +22,11 @@ class RobotServer(threading.Thread):
         while self.running:
             try:
                 self.client_socket, self.client_address = self.server_socket.accept()
-                print(f"Połączono z {self.client_address}")
+                print(f"Połączono z {self.client_address[0]}:{self.client_address[1]} (IP:dynamic_port)")
                 while self.running and self.client_socket:
-                    time.sleep(1)  # Keep the thread alive to maintain the connection
+                    pass
             except (ConnectionError, ConnectionAbortedError):
-                print("Błąd połączenia z klientem.")
+                print("Błąd połączenia z klientem")
                 self.client_socket = None
             finally:
                 if self.client_socket:
@@ -37,7 +37,7 @@ class RobotServer(threading.Thread):
         if self.client_socket:
             self.client_socket.close()
         self.server_socket.close()
-        print("Serwer zatrzymany.")
+        print("Serwer zatrzymany")
 
     def is_client_connected(self):
         return self.client_socket is not None
@@ -48,7 +48,7 @@ class RobotServer(threading.Thread):
             data = self.client_socket.recv(1024)
             if data:
                 x, y, z, rx, ry, rz = self.concat_tcp_pose(data.decode('utf-8'))
-                print(f"Otrzymano pozycję: x={x}, y={y}, z={z}, rx={rx}, ry={ry}, rz={rz}")
+                print(f"Otrzymano pozycję: \n   x={x}, y={y}, z={z}, rx={rx}, ry={ry}, rz={rz}")
                 return (x, y, z, rx, ry, rz)
         return None
 
@@ -62,10 +62,12 @@ class RobotServer(threading.Thread):
 
     def send_move_command(self, x, y, z):
         if self.is_client_connected():
-            cmd = f"move_to({x}, {y}, {z})"
+            cmd = f"({x}, {y}, {z})"
             print(f"Wysyłam komendę ruchu: {cmd}")
             self.client_socket.sendall(cmd.encode('utf-8'))
             move_response = self.client_socket.recv(1024)
-            print(f"Otrzymano odpowiedź na komendę ruchu: {move_response.decode('utf-8')}")
-            return move_response.decode('utf-8')
-        return None
+            print(f"Otrzymano odpowiedź na komendę ruchu: \n     {move_response.decode('utf-8')}")
+            if move_response.decode('utf-8') == "moveL OK":
+                return True
+            
+        return False
