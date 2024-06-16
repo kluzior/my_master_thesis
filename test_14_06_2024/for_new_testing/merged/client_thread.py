@@ -4,7 +4,7 @@ import time
 
 class ClientThread(threading.Thread):
     def __init__(self, host, port):
-        threading.Thread.__init__(self)
+        super().__init__()
         self.HOST = host
         self.PORT = port
         self.s = None

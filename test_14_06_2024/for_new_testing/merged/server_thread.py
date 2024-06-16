@@ -1,10 +1,11 @@
 import socket
 import re
 import threading
-import time 
+import time
 
-class RobotServer:
+class RobotServer(threading.Thread):
     def __init__(self, host, port):
+        super().__init__()
         self.host = host
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,24 +15,10 @@ class RobotServer:
         self.running = False
         self.client_socket = None
         self.client_address = None
-        self.client_thread = None
 
-    def start(self):
+    def run(self):
         print(f"Serwer nasłuchuje na {self.host}:{self.port}")
         self.running = True
-        self.client_thread = threading.Thread(target=self.handle_client)
-        self.client_thread.start()
-
-    def stop(self):
-        self.running = False
-        if self.client_socket:
-            self.client_socket.close()
-        self.server_socket.close()
-        if self.client_thread:
-            self.client_thread.join()
-        print("Serwer zatrzymany.")
-
-    def handle_client(self):
         while self.running:
             try:
                 self.client_socket, self.client_address = self.server_socket.accept()
@@ -44,6 +31,13 @@ class RobotServer:
             finally:
                 if self.client_socket:
                     self.client_socket.close()
+
+    def stop(self):
+        self.running = False
+        if self.client_socket:
+            self.client_socket.close()
+        self.server_socket.close()
+        print("Serwer zatrzymany.")
 
     def send_pose_request(self):
         if self.client_socket:

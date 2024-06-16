@@ -1,4 +1,3 @@
-import threading
 import time
 from client_thread import ClientThread
 from server_thread import RobotServer
@@ -43,3 +42,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         server.stop()
         client.stop()
+        server.join()
+        client.join()
