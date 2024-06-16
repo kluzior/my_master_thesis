@@ -23,22 +23,22 @@ if __name__ == "__main__":
 
     try:
         while True:
-            # Interact with the server
-            pose = server.send_pose_request()
-            if pose:
-                x, y, z, rx, ry, rz = pose
-                server.send_move_command(x, y, z - 0.17)
+            if server.is_client_connected() and client.is_connected():
 
-            time.sleep(2)  # Give some time before sending the next command
+                pose = server.send_pose_request()
+                if pose:
+                    x, y, z, rx, ry, rz = pose
+                    server.send_move_command(x, y, z - 0.17)
 
-            # Interact with the client
-            client.send("give_pose")
-            time.sleep(1)
-            response = client.receive()
-            if response:
-                print(f"Client received: {response}")
+                time.sleep(2)  # Give some time before sending the next command
 
-            time.sleep(2)  # Give some time before the next interaction
+                client.send("give_pose")
+                time.sleep(1)
+                response = client.receive()
+                if response:
+                    print(f"Client received: {response}")
+
+                time.sleep(2)  # Give some time before the next interaction
     except KeyboardInterrupt:
         server.stop()
         client.stop()

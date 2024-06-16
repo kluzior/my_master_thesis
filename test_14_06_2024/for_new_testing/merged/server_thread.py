@@ -39,8 +39,11 @@ class RobotServer(threading.Thread):
         self.server_socket.close()
         print("Serwer zatrzymany.")
 
+    def is_client_connected(self):
+        return self.client_socket is not None
+
     def send_pose_request(self):
-        if self.client_socket:
+        if self.is_client_connected():
             self.client_socket.sendall(b"give_pose")
             data = self.client_socket.recv(1024)
             if data:
@@ -58,7 +61,7 @@ class RobotServer(threading.Thread):
             return (0, 0, 0, 0, 0, 0)
 
     def send_move_command(self, x, y, z):
-        if self.client_socket:
+        if self.is_client_connected():
             cmd = f"move_to({x}, {y}, {z})"
             print(f"Wysyłam komendę ruchu: {cmd}")
             self.client_socket.sendall(cmd.encode('utf-8'))

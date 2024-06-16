@@ -9,20 +9,26 @@ class ClientThread(threading.Thread):
         self.PORT = port
         self.s = None
         self.running = False
+        self.connected = False
 
     def run(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect((self.HOST, self.PORT))
+        try:
+            self.s.connect((self.HOST, self.PORT))
+            self.connected = True
+        except ConnectionError:
+            self.connected = False
+
         self.running = True
         while self.running:
             time.sleep(1)  # Keep the thread alive to maintain the connection
 
     def send(self, cmd):
-        if self.s:
+        if self.is_connected():
             self.s.send(cmd.encode('utf-8'))
 
     def receive(self):
-        if self.s:
+        if self.is_connected():
             data = self.s.recv(1024)
             return data.decode('utf-8')
         return None
@@ -31,3 +37,6 @@ class ClientThread(threading.Thread):
         self.running = False
         if self.s:
             self.s.close()
+
+    def is_connected(self):
+        return self.connected
