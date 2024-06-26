@@ -64,7 +64,7 @@ class calibrateCamera():
         num = 0
 
         for image in self.images:
-            img = image
+            img = image.copy()
 
             cv2.imshow('img', img)
             cv2.waitKey(1000)
@@ -106,7 +106,8 @@ class calibrateCamera():
     
         num = 0 
         self.undistorted_images = []
-        for img in self.images:
+        for image in self.images:
+            img = image.copy()
             h, w = img.shape[:2] 
 
             newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(self.camera_matrix, self.distortion_params, (w,h), 1, (w,h))
