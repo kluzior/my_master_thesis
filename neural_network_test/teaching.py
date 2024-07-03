@@ -30,36 +30,38 @@ def predict_shape(image_path, model, image_size=(28, 28)):
     return prediction
 
 
-current_working_directory = os.getcwd()
-print(f"Current working directory: {current_working_directory}")
+if __name__ == "__main__":
+    current_working_directory = os.getcwd()
+    print(f"Current working directory: {current_working_directory}")
+    
+    ref_path = 'neural_network_test/new/cropped2/'
+    images_1, labels_1 = load_images_from_folder(ref_path + 'object1', label=1)
+    images_2, labels_2 = load_images_from_folder(ref_path + 'object2', label=2)
+    images_3, labels_3 = load_images_from_folder(ref_path + 'object3', label=3)
+    images_4, labels_4 = load_images_from_folder(ref_path + 'object4', label=4)
+    images_5, labels_5 = load_images_from_folder(ref_path + 'object5', label=5)
 
-images_1, labels_1 = load_images_from_folder('neural_network_test/new/cropped2/object1', label=1)
-images_2, labels_2 = load_images_from_folder('neural_network_test/new/cropped2/object2', label=2)
-images_3, labels_3 = load_images_from_folder('neural_network_test/new/cropped2/object3', label=3)
-images_4, labels_4 = load_images_from_folder('neural_network_test/new/cropped2/object4', label=4)
-images_5, labels_5 = load_images_from_folder('neural_network_test/new/cropped2/object5', label=5)
-
-X = np.array(images_1 + images_2 + images_3 + images_4 + images_5)
-y = np.array(labels_1 + labels_2 + labels_3 + labels_4 + labels_5)
-
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-mlp = MLPClassifier(hidden_layer_sizes=(100,), max_iter=300, solver='adam', random_state=42)
-mlp.fit(X_train, y_train)
-
-y_pred = mlp.predict(X_test)
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print(classification_report(y_test, y_pred))
+    X = np.array(images_1 + images_2 + images_3 + images_4 + images_5)
+    y = np.array(labels_1 + labels_2 + labels_3 + labels_4 + labels_5)
 
 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Example usage:
-pred = predict_shape('neural_network_test/new/cropped2/test3.png', mlp)
-shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
-print("Predicted shape:", shape_labels[pred[0]])
+    mlp = MLPClassifier(hidden_layer_sizes=(100,), max_iter=300, solver='adam', random_state=42)
+    mlp.fit(X_train, y_train)
+
+    y_pred = mlp.predict(X_test)
+    print("Accuracy:", accuracy_score(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
 
 
-model_file_path = 'mlp_model.joblib'
 
-joblib.dump(mlp, model_file_path)
+    # # Example usage:
+    # pred = predict_shape('neural_network_test/new/cropped2/test3.png', mlp)
+    # shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
+    # print("Predicted shape:", shape_labels[pred[0]])
+
+
+    model_file_path = 'mlp_model.joblib'
+
+    joblib.dump(mlp, model_file_path)

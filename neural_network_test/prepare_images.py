@@ -65,7 +65,7 @@ def prepare_image(image_path, save_path):
     # undistort
     uimg = undistort_frame(img, mtx, distortion)
     # binarize
-    buimg = apply_binarization(uimg, 'standard')
+    buimg = apply_binarization(uimg, 'otsu')
     # find contour + crop
     objects, _, _ = crop_image(buimg)
     # save
