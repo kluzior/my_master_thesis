@@ -1,4 +1,6 @@
-opencv-python
 numpy
+opencv-python
+scikit-learn
+scikit-image
 glob2
 webcolors
