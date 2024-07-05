@@ -13,4 +13,4 @@ if __name__ == "__main__":
 
     NN_prep.run(reference_folder, results_folder, table_roi_points)
 
-    NN_train.run(results_folder, model_file_path="MODEL")
+    NN_train.run_with_grid_search(results_folder, model_file_path="MODEL_GRID")
