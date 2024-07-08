@@ -145,7 +145,7 @@ class NN_Training:
         clf = GridSearchCV(mlp, parameter_space, n_jobs=-1, cv=5, verbose=2, return_train_score=True)
         clf.fit(X_train, y_train)
 
-        self._logger.info(f'Best parameters found:\n {clf.best_params_} ')
+        self._logger.info(f'Best parameters found:\n \t{clf.best_params_} ')
 
         y_pred = clf.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
