@@ -9,6 +9,7 @@ from sklearn.model_selection import GridSearchCV
 from skimage import io, color, transform
 import joblib
 import datetime
+import logging
 
 
 class NN_Preparing:
@@ -16,11 +17,14 @@ class NN_Preparing:
     def __init__(self):
         self.image_processor = ImageProcessor()
 
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'NN_Preparing({self}) was initialized.')
+
     def prepare_image(self, image_path, save_path, roi_points=None):
         mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         if img is None:
-            print(f"Failed to read {image_path}")
+            self._logger.error(f'Failed to read {image_path}')
             return
         # ignore background
         iimg, _ = self.image_processor.ignore_background(img, roi_points)
@@ -34,13 +38,14 @@ class NN_Preparing:
         if objects:
             cv2.imwrite(save_path, objects[0])
         else:
-            print(f"No objects found in {image_path}")
+            self._logger.error(f'No objects found in {image_path}')
 
     def process_images_in_folder(self, reference_folder, results_folder, roi_points=None):
         for root, dirs, files in os.walk(reference_folder):
-            print(f'root: {root}')
-            print(f'dirs: {dirs}')
-            print(f'files: {files}')
+            self._logger.info(f'Photo processing at:\n'
+                            f'\troot: \t{root}\n'
+                            f'\tdirs: \t{dirs}\n'
+                            f'\tfiles: \t{files}')
             # Tworzenie analogicznej struktury folderów wewnątrz folderu wynikowego
             relative_path = os.path.relpath(root, reference_folder)
             save_dir = os.path.join(results_folder, relative_path)
@@ -51,7 +56,7 @@ class NN_Preparing:
                     file_path = os.path.join(root, file)
                     save_path = os.path.join(save_dir, file)
                     self.prepare_image(file_path, save_path, roi_points)
-                    print(f"Processed and saved {file_path} to {save_path}")
+                    self._logger.debug(f'Processed and saved {file_path} to {save_path}')
 
     def run(self, reference_folder, results_folder, roi_points=None):
         self.process_images_in_folder(reference_folder, results_folder, roi_points)
@@ -60,7 +65,9 @@ class NN_Preparing:
 class NN_Training:
 
     def __init__(self):
-        pass
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'NN_Training({self}) was initialized.')
 
     def load_images_from_folder(self, folder, label, image_size=(28, 28)):
         images = []
@@ -105,8 +112,9 @@ class NN_Training:
         print("Model saved at:", os.path.abspath(model_file_path))
 
     def run_with_grid_search(self, results_folder, model_file_path='mlp_model'):
-        if model_file_path == 'mlp_model':
-            model_file_path = f"{model_file_path}_{datetime.datetime.now().strftime("%d-%m_%H-%M")}"        
+        start_time = datetime.datetime.now()
+        self._logger.info(f'run_with_grid_search started at {start_time} ')
+
         images_1, labels_1 = self.load_images_from_folder(results_folder + 'object1', label=1)
         images_2, labels_2 = self.load_images_from_folder(results_folder + 'object2', label=2)
         images_3, labels_3 = self.load_images_from_folder(results_folder + 'object3', label=3)
@@ -118,29 +126,58 @@ class NN_Training:
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        mlp = MLPClassifier(max_iter=3000, random_state=42)
+        mlp = MLPClassifier(max_iter=3000, random_state=42, early_stopping=True)
         parameter_space = {
-            'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100)],
-            'alpha': [0.0001, 0.001, 0.01, 0.1],
+            # 'hidden_layer_sizes': [(50,)],            # less values only for script testing
+            # 'alpha': [0.0001],
+            # 'solver': ['sgd'],
+            # 'activation': ['tanh'],
+            # 'learning_rate': ['constant'],
+            # 'learning_rate_init': [0.001],
+            # 'batch_size': [32, 64],
+
+            'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100), (100, 50)],
+            'alpha': [0.0001, 0.001, 0.01, 0.1, 0.5],
             'solver': ['sgd', 'adam', 'lbfgs'],
+            'activation': ['tanh', 'relu', 'logistic'],
+            'learning_rate': ['constant', 'invscaling', 'adaptive'],
+            'learning_rate_init': [0.001, 0.01, 0.1],
+            'batch_size': [32, 64, 128],
         }
-        clf = GridSearchCV(mlp, parameter_space, n_jobs=-1, cv=3, verbose=2)
+        clf = GridSearchCV(mlp, parameter_space, n_jobs=-1, cv=5, verbose=2, return_train_score=True)
         clf.fit(X_train, y_train)
 
         print('Best parameters found:\n', clf.best_params_)
 
         y_pred = clf.predict(X_test)
-        print("Accuracy:", accuracy_score(y_test, y_pred))
+        accuracy = accuracy_score(y_test, y_pred)
+        print("Accuracy:", accuracy)
         print(classification_report(y_test, y_pred))
 
+        model_file_path  = (f"models/{model_file_path}_"
+                            f"accuracy_{format(accuracy, '.4f').replace('.', '_')}_"
+                            f"{clf.best_params_['solver']}_"                    
+                            f"{clf.best_params_['activation']}_"                    
+                            f"{clf.best_params_['learning_rate']}_"                    
+                            f"batch{clf.best_params_['batch_size']}_"                
+                            f"{datetime.datetime.now().strftime("%d-%m_%H-%M")}"                
+                            ".joblib")
+        
         joblib.dump(clf, model_file_path)
-        print("Model saved at:", os.path.abspath(model_file_path))
 
+        print("Model saved at:", os.path.abspath(model_file_path))
+        end_time = datetime.datetime.now()
+        self._logger.info(f'run_with_grid_search ended at {end_time} ')
+        self._logger.info(f'run_with_grid_search took {end_time - start_time} ')
 
 class NN_Classification:
     def __init__(self, roi_points):
         self.image_processor = ImageProcessor()
         self.roi_points = roi_points
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'NN_Classification({self}) was initialized.')
+
 
     def prepare_image(self, image_path):
         mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
