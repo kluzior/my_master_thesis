@@ -10,10 +10,10 @@ from skimage import io, color, transform
 import joblib
 import datetime
 import logging
+import inspect
 
 
 class NN_Preparing:
-
     def __init__(self):
         self.image_processor = ImageProcessor()
 
@@ -61,11 +61,8 @@ class NN_Preparing:
     def run(self, reference_folder, results_folder, roi_points=None):
         self.process_images_in_folder(reference_folder, results_folder, roi_points)
 
-
 class NN_Training:
-
     def __init__(self):
-
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'NN_Training({self}) was initialized.')
 
@@ -113,7 +110,8 @@ class NN_Training:
 
     def run_with_grid_search(self, results_folder, model_file_path='mlp_model'):
         start_time = datetime.datetime.now()
-        self._logger.info(f'run_with_grid_search started at {start_time} ')
+        func_name = inspect.currentframe().f_code.co_name
+        self._logger.info(f'{func_name} started at {start_time} ')
 
         images_1, labels_1 = self.load_images_from_folder(results_folder + 'object1', label=1)
         images_2, labels_2 = self.load_images_from_folder(results_folder + 'object2', label=2)
@@ -147,12 +145,12 @@ class NN_Training:
         clf = GridSearchCV(mlp, parameter_space, n_jobs=-1, cv=5, verbose=2, return_train_score=True)
         clf.fit(X_train, y_train)
 
-        print('Best parameters found:\n', clf.best_params_)
+        self._logger.info(f'Best parameters found:\n {clf.best_params_} ')
 
         y_pred = clf.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
-        print("Accuracy:", accuracy)
-        print(classification_report(y_test, y_pred))
+        self._logger.info(f'Accuracy: {accuracy}')
+        self._logger.info(f'\n{classification_report(y_test, y_pred)}')
 
         model_file_path  = (f"models/{model_file_path}_"
                             f"accuracy_{format(accuracy, '.4f').replace('.', '_')}_"
@@ -165,10 +163,10 @@ class NN_Training:
         
         joblib.dump(clf, model_file_path)
 
-        print("Model saved at:", os.path.abspath(model_file_path))
+        self._logger.info(f'Model saved at: {os.path.abspath(model_file_path)} ')
         end_time = datetime.datetime.now()
-        self._logger.info(f'run_with_grid_search ended at {end_time} ')
-        self._logger.info(f'run_with_grid_search took {end_time - start_time} ')
+        self._logger.info(f'{func_name} ended at {end_time} ')
+        self._logger.info(f'{func_name} took {end_time - start_time} ')
 
 class NN_Classification:
     def __init__(self, roi_points):
