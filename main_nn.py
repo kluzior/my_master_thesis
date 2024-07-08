@@ -1,8 +1,10 @@
 from packages2.neural_network import NN_Preparing, NN_Training
+from packages2.logger_configuration import configure_logger
 import numpy as np
 
 
 if __name__ == "__main__":
+    configure_logger()
     reference_folder = 'images/images_26_06_24/objects/refs/'
     results_folder = 'images/images_26_06_24/objects/results/'
 
@@ -13,4 +15,4 @@ if __name__ == "__main__":
 
     NN_prep.run(reference_folder, results_folder, table_roi_points)
 
-    NN_train.run_with_grid_search(results_folder, model_file_path="MODEL_GRID")
+    NN_train.run_with_grid_search(results_folder)
