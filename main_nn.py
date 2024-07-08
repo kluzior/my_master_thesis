@@ -4,7 +4,7 @@ import numpy as np
 
 
 if __name__ == "__main__":
-    configure_logger()
+    configure_logger("debug_nn")
     reference_folder = 'images/images_26_06_24/objects/refs/'
     results_folder = 'images/images_26_06_24/objects/results/'
 

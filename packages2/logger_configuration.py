@@ -1,8 +1,8 @@
 import logging
 import pathlib
 
-def configure_logger():
-    log_file = pathlib.Path("debug.log")
+def configure_logger(path='debug' ):
+    log_file = pathlib.Path(f"{path}.log")
 
     if log_file.is_file():
         log_file.unlink()
