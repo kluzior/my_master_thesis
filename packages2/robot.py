@@ -1,6 +1,6 @@
 import re
 import time
-from cmd_generator import CmdGenerator
+from packages2.cmd_generator import CmdGenerator
 
 
 
