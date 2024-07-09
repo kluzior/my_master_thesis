@@ -11,21 +11,25 @@ print("\nLoaded camera Matrix: \n", mtx)
 print("\nLoaded distortion Parameters: \n", distortion)
 
 # define chessboard params
-chessboardSize = (8,6)
+chessboardSize = (8,7)
 size_of_chessboard_squares_mm = 23
 
 # prepare chessboard corners in real world 
 objp = np.zeros((chessboardSize[0] * chessboardSize[1], 3), np.float32)
 objp[:,:2] = np.mgrid[0:chessboardSize[0],0:chessboardSize[1]].T.reshape(-1,2)
+objp2 = objp.copy()
+objp2[:, 0] -= 1
+objp2[:, 1] -= 2
+print(f" objp2: {objp}")
 objp *= size_of_chessboard_squares_mm
+objp2 *= size_of_chessboard_squares_mm
 
 # prepare box coordinates in real world 
 axisBoxes = np.float32([[0,0,0], [0,1,0], [1,1,0], [1,0,0], [0,0,-1], [0,1,-1], [1,1,-1], [1,0,-1]])
 axisBoxes *= size_of_chessboard_squares_mm
 
 # load undistorted images
-images = glob.glob('./image_banks/02_undistorted/*.png')
-
+images = glob.glob('./images/images_26_06_24/chessboard_calib/0.png')
 num = 0
 for image in images:
     img = cv.imread(image)
@@ -33,9 +37,22 @@ for image in images:
 
     # find the chessboard corners on image 
     ret, corners = cv.findChessboardCorners(gray, chessboardSize, None)
+    print(f"len corner: {len(corners)}")
+    for corner in corners:
+            print(f"corner: {corner}")
+
     if ret == True:
         # compute rotation & translation vectors from chessboard corners in real world & image
         _, rvecs, tvecs = cv.solvePnP(objp, corners, mtx, distortion)
+        print(f"len objp: {len(objp)}")
+        print(f"len corners: {len(corners)}")
+        print(f"rvecs: {rvecs}")
+        print(f"tvecs: {tvecs}")
+        _, rvecs2, tvecs2 = cv.solvePnP(objp2, corners, mtx, distortion)
+        print(f"len objp2: {len(objp2)}")
+        print(f"len corners: {len(corners)}")
+        print(f"rvecs2: {rvecs2}")
+        print(f"tvecs2: {tvecs2}")
 
         # compute box coordinates on image 
         imgpts, jac = cv.projectPoints(axisBoxes, rvecs, tvecs, mtx, distortion)
@@ -43,7 +60,7 @@ for image in images:
         # put boxes on image and save to file
         img = drawBoxes(img, imgpts)
         cv.imshow('img', img)
-        cv.imwrite('./image_banks/03_posed/img' + str(num) + '.png', img)
+        cv.imwrite('./images/images_26_06_24/pose_comp_calib/img' + str(num) + '.png', img)
         num += 1
         cv.waitKey(1000)
 

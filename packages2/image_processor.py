@@ -59,6 +59,71 @@ class ImageProcessor:
         ignored_image = cv2.bitwise_and(image, image, mask=mask)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         return ignored_image, contours
+    
+
+    def calculate_rvec_tvec(self, frame, point_shift=(0,0), chess_size=(8,7), side_of_chess_mm=23):
+        mtx, distortion = self.load_camera_params('CameraParams.npz')
+        # prepare chessboard corners in real world 
+        objp = np.zeros((chess_size[0] * chess_size[1], 3), np.float32)
+        objp[:,:2] = np.mgrid[0:chess_size[0],0:chess_size[1]].T.reshape(-1,2)
+        objp[:, 0] -= point_shift[0]
+        objp[:, 1] -= point_shift[1]
+        objp *= side_of_chess_mm
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        ret, corners = cv2.findChessboardCorners(gray, chess_size, None)
+        print(f"TEST1, len corners: {len(corners)}")
+        if ret == True:
+            _, rvecs, tvecs = cv2.solvePnP(objp, corners, mtx, distortion)
+            print(f"calculated rvec: {rvecs}")
+            print(f"calculated tvec: {tvecs}")
+        return rvecs, tvecs
 
 
 
+    # def show_chess_corner(self, frame, chess_size=(8,7), point=(0,0)):
+    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    #     ret, corners2 = cv2.findChessboardCorners(gray, chess_size, None)    
+    #     print(f"TEST2, len corners: {len(corners2)}")
+    #     corners_mtx = np.array(corners2).reshape(chess_size[0], chess_size[1])
+        
+    #     image_to_show = frame.copy()
+        
+    #     center = corners_mtx(point[0], point[1])
+    #     center = tuple(center.astype(int))
+    #     # Rysowanie okręgu
+    #     radius = 20  # Promień okręgu
+    #     color = (0, 255, 0)  # Kolor okręgu (zielony)
+    #     thickness = 2  # Grubość linii okręgu
+
+    #     cv2.circle(image_to_show, center, radius, color, thickness)
+
+    #     # Wyświetlanie obrazu
+    #     cv2.imshow('Image with Circle', image_to_show)
+
+    def show_chess_corner(self, frame, chess_size=(8,7), point=(0,0)):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        ret, corners2 = cv2.findChessboardCorners(gray, chess_size, None)
+        if ret:
+            print(f"TEST2, len corners: {len(corners2)}")
+            # Reshape corners2 to a 3D array: (chess_size[0], chess_size[1], 2)
+            corners_mtx = np.array(corners2).reshape(chess_size[1], chess_size[0], 2)
+            
+            image_to_show = frame.copy()
+            
+            # Access the specific point using the 'point' variable
+            center = corners_mtx[point[1], point[0]]
+            center = tuple(center.astype(int))
+            # Rysowanie okręgu
+            radius = 10  # Promień okręgu
+            color = (0, 0, 255)  # Kolor okręgu 
+            thickness = 5  # Grubość linii okręgu
+
+            cv2.circle(image_to_show, center, radius, color, thickness)
+
+            # Wyświetlanie obrazu
+            cv2.imshow('Image with Circle', image_to_show)
+            # cv2.waitKey(0)  # Czeka na naciśnięcie klawisza przed zamknięciem okna
+            # cv2.destroyAllWindows()  # Zamyka wszystkie okna
+        else:
+            print("Nie znaleziono narożników szachownicy.")

@@ -13,8 +13,7 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind((HOST, PORT))
 s.listen(5)
 c, addr = s.accept()
-
-
+s
 configure_logger("debug_handeye")
 handeye = HandEyeCalibration(c)
 a, positions  = handeye.run()

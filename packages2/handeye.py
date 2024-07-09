@@ -5,12 +5,24 @@ import cv2
 import numpy as np
 from packages2.common import RPY_to_rmtx
 import logging
+from packages2.image_processor import ImageProcessor
 
 
 class HandEyeCalibration:
     def __init__(self, robot_client):
         self.camera = Camera(1)
         self.robot = Robot(robot_client)
+        self.image_processor = ImageProcessor()
+
+        self.coordinates_of_chessboard=[(0,0),
+                                        (7,0),
+                                        (0,6),
+                                        (7,6),
+                                        (4,3),
+                                        (2,5),
+                                        (1,3),
+                                        (0,4)   
+                                        ]
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
@@ -26,42 +38,49 @@ class HandEyeCalibration:
         cv2.waitKey(1000)
 
     def run(self):
-        images = []
+        chess_image = None
         robot_positions = []
+        # self._logger.info(f'JEZELI JESTEŚ GOTOWY WCISNIJ I FOR IMAGE')
+        print(f'JEZELI JESTEŚ GOTOWY WCISNIJ I FOR IMAGE')
         while self.camera.cap.isOpened():
             img = self.camera.get_frame()
-            k = cv2.waitKey(5)
-            if k == 27:                                     # wait for 'Esc' key to save
+            k = cv2.waitKey(5) & 0xFF
+            if k == 27:  # wait for 'Esc' key to exit
                 self._logger.info(f'user pressed Esc key')
                 break
-            elif k == ord('s'):                             # wait for 's' key to save
-                position = self.robot.give_pose()
-                robot_positions.append(position)
-                images.append(img)
+            elif k == ord('i'):  # wait for 'i' key to capture chessboard image
+                chess_image = img
+                print(f"zapisano zdjęcie szachownicy")
+                cv2.imshow("chess_image", chess_image)
+                mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
+                u_chess_image = self.image_processor.undistort_frame(chess_image, mtx, distortion)
+                cv2.imshow("u_chess_image", u_chess_image)
+                for index, coords in enumerate(self.coordinates_of_chessboard, start=1):
+                    rvec, tvec = self.image_processor.calculate_rvec_tvec(u_chess_image, point_shift=coords)
+                    self.image_processor.show_chess_corner(u_chess_image, point=coords)
 
-                # save_image(write_path, num, img)   
-                # self._logger.debug(f'captured photo no. {num}')
-            
+                    # Wait here until 's' is pressed
+                    print(f'Press "s" to confirm robot on place for point {index}')
+                    while True:
+                        k2 = cv2.waitKey(5)
+                        if k2 == ord('s'):
+                            print(f"Received pose for point {index}/{len(self.coordinates_of_chessboard)}: {coords}")
+                            self.robot.give_pose()
+                            break
+                print("Received all poses, press Esc")
             cv2.imshow('Camera', img)
 
-        self.camera.cap.release()   
+        self.camera.cap.release()
         cv2.destroyAllWindows()
-        self._logger.info(f'captured {len(images)} photos')
-        # self._logger.debug(f'exit get_images() program')
 
-        return images, robot_positions
 
-    def prepare_data(self, images, robot_positions):
+        return chess_image, robot_positions
+
+    def prepare_data(self, chess_image, robot_positions):
         chess_datas = []
         robot_datas = []
         image_no = 0
-        for image in images:
-            self._logger.info(f'Calculating rotation&translation matrix for image no: {image_no}')
-            image_no += 1
 
-
-
-            pass
 
         for pos in robot_positions:
             self._logger.info(f'Calculating rotation&translation matrix for robot position: {pos}')
@@ -81,3 +100,6 @@ class HandEyeCalibration:
             self._logger.info(f'Obtained matrix: \n\t\t{matrix}')
             robot_datas.append(matrix)
         return chess_datas, robot_datas
+
+
+
