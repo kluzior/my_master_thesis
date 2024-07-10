@@ -20,6 +20,11 @@ class HandEyeCalibration:
         self.camera_mtx = []  
         self.robot_mtx = []    
 
+        self.tsai_result = None  
+        self.li_result = None
+        self.zivid_result = None
+
+
         self.coordinates_of_chessboard=[(0,0),
                                         (7,0),
                                         (0,6),
@@ -33,24 +38,14 @@ class HandEyeCalibration:
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
 
-    def calibrate(self):
-        pass 
-
-
-    def test(self):
-        frame = self.camera.get_frame() 
-        cv2.imshow('frame', frame) 
-        cv2.imwrite('test_frame.png', frame)                        
-        cv2.waitKey(1000)
-
     def run(self):
         chess_image = None
         self._logger.info(f'IF YOU ARE READY PRESS "i" TO SAVE THE CHECKERBOARD IMAGE FOR CALIBRATION')
         while self.camera.cap.isOpened():
             img = self.camera.get_frame()
             k = cv2.waitKey(5) & 0xFF
-            if k == 27:  # wait for 'Esc' key to exit
-                self._logger.info(f'User pressed Esc key')
+            if k == 27:
+                self._logger.info(f'User pressed Esc key - exit program')
                 break
             elif k == ord('i'):  # wait for 'i' key to capture chessboard image
                 chess_image = img
@@ -62,14 +57,15 @@ class HandEyeCalibration:
                     self.image_processor.show_chess_corner(u_chess_image, point=coords)
                     self.rvec_tvec_pairs.append((rvec, tvec))
 
-                    self._logger.info(f'PRESS "s" TO CONFIRM THAT ROBOT IS ON PLACE FOR POINT {index}')
+                    self._logger.info(f'PRESS "s" TO CONFIRM THAT ROBOT IS ON PLACE FOR POINT {index}: {coords}')
                     while True:
                         k2 = cv2.waitKey(5)
-                        if k2 == ord('s'):
+                        if k2 == ord('s'):  # wait for 's' key to capture robot TCP position
                             robot_position = self.robot.give_pose()
                             self.robot_positions.append(robot_position)
-                            self._logger.info(f'Received & saved pose for point {index}/{len(self.coordinates_of_chessboard)}: {coords}')
+                            self._logger.info(f'Received & saved pose for point {index}/{len(self.coordinates_of_chessboard)}')
                             break
+                cv2.destroyWindow("POINT GUIDANCE")
                 self._logger.info("RECEIVED ALL POSES - PRESS ESC")
             cv2.imshow('Camera', img)
 
@@ -115,5 +111,15 @@ class HandEyeCalibration:
             self.robot_mtx.append(matrix)
 
 
+    def calibrate_tsai(self):
+        
+
+        pass
+
+
+    def calibrate_li(self):
+
+
+        pass
 
 

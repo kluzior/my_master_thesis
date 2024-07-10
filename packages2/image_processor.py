@@ -1,7 +1,13 @@
 import cv2
 import numpy as np
+import logging
+
 
 class ImageProcessor:
+    def __init__(self):
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'ImageProcessor({self}) was initialized.')
 
     def load_camera_params(self, path):
         with np.load(path) as file:
@@ -72,58 +78,22 @@ class ImageProcessor:
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, chess_size, None)
-        print(f"TEST1, len corners: {len(corners)}")
         if ret == True:
             _, rvecs, tvecs = cv2.solvePnP(objp, corners, mtx, distortion)
-            print(f"calculated rvec: {rvecs}")
-            print(f"calculated tvec: {tvecs}")
         return rvecs, tvecs
-
-
-
-    # def show_chess_corner(self, frame, chess_size=(8,7), point=(0,0)):
-    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #     ret, corners2 = cv2.findChessboardCorners(gray, chess_size, None)    
-    #     print(f"TEST2, len corners: {len(corners2)}")
-    #     corners_mtx = np.array(corners2).reshape(chess_size[0], chess_size[1])
-        
-    #     image_to_show = frame.copy()
-        
-    #     center = corners_mtx(point[0], point[1])
-    #     center = tuple(center.astype(int))
-    #     # Rysowanie okręgu
-    #     radius = 20  # Promień okręgu
-    #     color = (0, 255, 0)  # Kolor okręgu (zielony)
-    #     thickness = 2  # Grubość linii okręgu
-
-    #     cv2.circle(image_to_show, center, radius, color, thickness)
-
-    #     # Wyświetlanie obrazu
-    #     cv2.imshow('Image with Circle', image_to_show)
 
     def show_chess_corner(self, frame, chess_size=(8,7), point=(0,0)):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, corners2 = cv2.findChessboardCorners(gray, chess_size, None)
         if ret:
-            print(f"TEST2, len corners: {len(corners2)}")
-            # Reshape corners2 to a 3D array: (chess_size[0], chess_size[1], 2)
             corners_mtx = np.array(corners2).reshape(chess_size[1], chess_size[0], 2)
             
             image_to_show = frame.copy()
             
-            # Access the specific point using the 'point' variable
             center = corners_mtx[point[1], point[0]]
             center = tuple(center.astype(int))
-            # Rysowanie okręgu
-            radius = 10  # Promień okręgu
-            color = (0, 0, 255)  # Kolor okręgu 
-            thickness = 5  # Grubość linii okręgu
 
-            cv2.circle(image_to_show, center, radius, color, thickness)
-
-            # Wyświetlanie obrazu
-            cv2.imshow('Image with Circle', image_to_show)
-            # cv2.waitKey(0)  # Czeka na naciśnięcie klawisza przed zamknięciem okna
-            # cv2.destroyAllWindows()  # Zamyka wszystkie okna
+            cv2.circle(image_to_show, center, radius=10, color=(0, 0, 255), thickness=5)
+            cv2.imshow('POINT GUIDANCE', image_to_show)
         else:
-            print("Nie znaleziono narożników szachownicy.")
+            self._logger.error("Nie znaleziono narożników szachownicy.")
