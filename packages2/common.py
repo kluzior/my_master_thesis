@@ -86,3 +86,10 @@ def RPY_to_rmtx(roll, pitch, yaw):
     mtx[2][2] = cb*cg           # r33
     return mtx
 
+def to_mtx(Rx, tX):
+    result = np.zeros((4, 4))
+    result[:3, :3] = Rx
+    for i in range(3):
+        result[i, 3] = tX[i]
+    result[3, 3] = 1
+    return result

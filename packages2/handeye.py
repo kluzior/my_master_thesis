@@ -5,6 +5,7 @@ import numpy as np
 import packages2.common as common
 import logging
 from packages2.image_processor import ImageProcessor
+import pickle
 
 class HandEyeCalibration:
     def __init__(self, robot_client):
@@ -148,10 +149,14 @@ class HandEyeCalibration:
         uX = 2*ux/(np.sqrt(1+common.norm(ux)**2))
         Rx = (1-common.norm(uX)**2/2)*np.eye(3) + 0.5*(uX*uX.T + np.sqrt(4-common.norm(uX)**2)*common.skew2(uX))
         tX = common.get_Translation(Rx,RA_I,TA,TB)
-        print(f"Calculated Tsai results | Rx: {Rx}")
-        print(f"Calculated Tsai results | tX: {tX.reshape(3,1)}")
-        return Rx, tX.reshape(3,1)
 
+        self.tsai_result = common.to_mtx(Rx, tX)
+        self._logger.info(f"Calculated Tsai result: \n{self.tsai_result}")
+        
+        with open('tsai_results.pkl', 'wb') as f:
+                pickle.dump(self.tsai_result, f)
+
+        self._logger.info(f"Tsai result saved to tsai_results.pkl")
 
     def calibrate_li(self):
         A_list = self.camera_mtx.copy()
@@ -184,9 +189,10 @@ class HandEyeCalibration:
         Rx, tX = common.get_RX_tX(Rx_tX)
         Rx = common.getRotation(Rx)
 
-        print(f"Calculated Li results | Rx: {Rx}")
-        print(f"Calculated Li results | tX: {tX.reshape(3,1)}")
+        self.li_result = common.to_mtx(Rx, tX)
+        self._logger.info(f"Calculated Li result: \n{self.li_result}")
 
-        return Rx, tX.reshape(3,1)
+        with open('li_results.pkl', 'wb') as f:
+                pickle.dump(self.li_result, f)
 
-
+        self._logger.info(f"Li result saved to li_results.pkl")
