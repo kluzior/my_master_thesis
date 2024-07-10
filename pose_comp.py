@@ -18,9 +18,9 @@ size_of_chessboard_squares_mm = 23
 objp = np.zeros((chessboardSize[0] * chessboardSize[1], 3), np.float32)
 objp[:,:2] = np.mgrid[0:chessboardSize[0],0:chessboardSize[1]].T.reshape(-1,2)
 objp2 = objp.copy()
-objp2[:, 0] -= 1
-objp2[:, 1] -= 2
-print(f" objp2: {objp}")
+objp2[:, 0] -= 7
+objp2[:, 1] -= 6
+print(f" objp2: {objp2}")
 objp *= size_of_chessboard_squares_mm
 objp2 *= size_of_chessboard_squares_mm
 
@@ -55,13 +55,13 @@ for image in images:
         print(f"tvecs2: {tvecs2}")
 
         # compute box coordinates on image 
-        imgpts, jac = cv.projectPoints(axisBoxes, rvecs, tvecs, mtx, distortion)
+        imgpts, jac = cv.projectPoints(axisBoxes, rvecs2, tvecs2, mtx, distortion)
 
         # put boxes on image and save to file
         img = drawBoxes(img, imgpts)
         cv.imshow('img', img)
         cv.imwrite('./images/images_26_06_24/pose_comp_calib/img' + str(num) + '.png', img)
         num += 1
-        cv.waitKey(1000)
+        cv.waitKey(0)
 
-cv.destroyAllWindows()
+# cv.destroyAllWindows()
