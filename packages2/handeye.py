@@ -45,80 +45,72 @@ class HandEyeCalibration:
 
     def run(self):
         chess_image = None
-        self._logger.info(f'')
-        print(f'JEZELI JESTEŚ GOTOWY WCISNIJ I FOR IMAGE')
+        self._logger.info(f'IF YOU ARE READY PRESS "i" TO SAVE THE CHECKERBOARD IMAGE FOR CALIBRATION')
         while self.camera.cap.isOpened():
             img = self.camera.get_frame()
             k = cv2.waitKey(5) & 0xFF
             if k == 27:  # wait for 'Esc' key to exit
-                self._logger.info(f'user pressed Esc key')
+                self._logger.info(f'User pressed Esc key')
                 break
             elif k == ord('i'):  # wait for 'i' key to capture chessboard image
                 chess_image = img
-                print(f"zapisano zdjęcie szachownicy")
-                cv2.imshow("chess_image", chess_image)
+                self._logger.info(f"Photo of chessboard for calibration saved")
                 mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
                 u_chess_image = self.image_processor.undistort_frame(chess_image, mtx, distortion)
-                cv2.imshow("u_chess_image", u_chess_image)
                 for index, coords in enumerate(self.coordinates_of_chessboard, start=1):
                     rvec, tvec = self.image_processor.calculate_rvec_tvec(u_chess_image, point_shift=coords)
                     self.image_processor.show_chess_corner(u_chess_image, point=coords)
-                    self.rvec_tvec_pairs.append((rvec, tvec))  # Dodaj parę (rvec, tvec) do listy
+                    self.rvec_tvec_pairs.append((rvec, tvec))
 
-                    # Wait here until 's' is pressed
-                    print(f'Press "s" to confirm robot on place for point {index}')
+                    self._logger.info(f'PRESS "s" TO CONFIRM THAT ROBOT IS ON PLACE FOR POINT {index}')
                     while True:
                         k2 = cv2.waitKey(5)
                         if k2 == ord('s'):
-                            print(f"Received pose for point {index}/{len(self.coordinates_of_chessboard)}: {coords}")
                             robot_position = self.robot.give_pose()
-                            self.robot_positions.append(robot_position)  # Dodaj pozycję robota do listy
+                            self.robot_positions.append(robot_position)
+                            self._logger.info(f'Received & saved pose for point {index}/{len(self.coordinates_of_chessboard)}: {coords}')
                             break
-                print("Received all poses, press Esc")
+                self._logger.info("RECEIVED ALL POSES - PRESS ESC")
             cv2.imshow('Camera', img)
 
         self.camera.cap.release()
         cv2.destroyAllWindows()
 
-
-    def show_collected_data(self):
         for index, coords in enumerate(self.coordinates_of_chessboard, start=1):
-            print(f'Point {index}: {coords}')
-            print(f'\tRobot position: {self.robot_positions[index-1]}')
-            print(f'\tRvec: {self.rvec_tvec_pairs[index-1][0]}')    
-            print(f'\tTvec: {self.rvec_tvec_pairs[index-1][1]}')
+            self._logger.debug(f'aggregated data for point no. {index} ({coords}):')
+            self._logger.debug(f'\trobot position: {self.robot_positions[index-1]}')
+            self._logger.debug(f'\tcamera rvec: {self.rvec_tvec_pairs[index-1][0]}')
+            self._logger.debug(f'\tcamera tvec: {self.rvec_tvec_pairs[index-1][1]}')
 
-    
 
     def prepare_camera_mtx(self):
         for index, (rvec, tvec) in enumerate(self.rvec_tvec_pairs):
-            rmtx = cv2.Rodrigues(rvec)[0]
+            self._logger.debug(f'Calculating rotation&translation matrix for camera no. {index}')
             mtx = np.zeros((4, 4))
+            
+            rmtx = cv2.Rodrigues(rvec)[0]
             mtx[:3, :3] = rmtx
             mtx[:3, 3] = tvec.ravel()
             mtx[3, 3] = 1
-            self.camera_mtx.append(mtx)
+            
             self._logger.info(f'Obtained camera matrix for point no. {index}: \n{mtx}')
+            self.camera_mtx.append(mtx)
 
     def prepare_robot_mtx(self):
         for index, pos in enumerate(self.robot_positions):            
-            print(f'pos: {pos}')
             pos = list(pos)
-            print(f'pos: {pos}')
-            self._logger.info(f'Calculating rotation&translation matrix for robot position: {pos}')
-            
+            self._logger.debug(f'Calculating rotation&translation matrix for robot position no. {index}')
+            matrix = np.zeros((4, 4))
+
             roll = pos[3]
             pitch = pos[4]
             yaw = pos[5]
-            matrix = np.zeros((4, 4))
-
-            # Get the 3x3 rotation matrix
             rotation_matrix = RPY_to_rmtx(roll, pitch, yaw)
-
             matrix[:3, :3] = rotation_matrix
             for i in range(3):
                 matrix[i, 3] = pos[i]
             matrix[3, 3] = 1
+            
             self._logger.info(f'Obtained robot matrix for point no. {index}: \n{matrix}')
             self.robot_mtx.append(matrix)
 
