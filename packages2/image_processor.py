@@ -111,7 +111,9 @@ class ImageProcessor:
         else:
             self._logger.error("Nie znaleziono narożników szachownicy.")
 
-    def get_roi_points(self, frame):
+    def get_roi_points(self, frame):                
+        print("Please select ROI point on picture!")
+
         while True:
             def click_event(event, x, y, flags, params):
                 roi_points, img = params['roi_points'], params['img']
