@@ -215,6 +215,16 @@ class NN_Training:
         self._logger.info(f'{func_name} took {end_time - start_time} ')
 
 class NN_Classification:
+    shape_colors = {
+        'None': (0, 0, 0),          # Black for unknown shape
+        'Label1': (255, 0, 0),      # Blue for Label1
+        'Label2': (0, 255, 0),      # Green for Label2
+        'Label3': (0, 0, 255),      # Red for Label3
+        'Label4': (255, 255, 0),    # Cyan for Label4
+        'Label5': (255, 255, 255)   # White for Label5
+    }
+    shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
+
     def __init__(self, roi_points):
         self.image_processor = ImageProcessor()
         self.roi_points = roi_points
@@ -249,8 +259,6 @@ class NN_Classification:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # ignore background                
         iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
-        # undistort
-        # uimg = self.image_processor.undistort_frame(iimg, mtx, distortion)
         # binarize
         buimg = self.image_processor.apply_binarization(iimg, 'standard')
         # find contour + crop
