@@ -9,20 +9,42 @@ import pickle
 
 class HandEyeCalibration:
     def __init__(self, robot_client):
+        """
+        Initializes the HandEyeCalibration object.
+
+        Args:
+            robot_client: The client object for communicating with robot.
+
+        Attributes:
+            camera: Camera object for capturing images
+            robot: Robot object for controlling the robot
+            image_processor: ImageProcessor object for framework to process images
+
+            rvec_tvec_pairs: A list to store the rotation and translation vectors for objects seen by camera
+            robot_positions: A list to store the robot's TCP positions
+
+            camera_mtx: A list to store calculated object-camera matrices 
+            robot_mtx: A list to store calculated TCP-robot base matrices 
+
+            tsai_result: The result of Tsai's hand-eye calibration method
+            li_result: The result of Li's hand-eye calibration method
+
+            coordinates_of_chessboard: The defined chess corners for calibration which will be used to collect robot positions
+
+            _logger: logger object for logging  messages
+        """
         self.camera = Camera(1)
         self.robot = Robot(robot_client)
         self.image_processor = ImageProcessor()
         
-        self.rvec_tvec_pairs = []  # Lista do przechowywania par (rvec, tvec)
-        self.robot_positions = []  # Lista do przechowywania pozycji z robota
+        self.rvec_tvec_pairs = []
+        self.robot_positions = []
 
         self.camera_mtx = []  
         self.robot_mtx = []    
 
         self.tsai_result = None  
         self.li_result = None
-        self.zivid_result = None
-
 
         self.coordinates_of_chessboard=[(0,0),
                                         (7,0),
@@ -38,6 +60,15 @@ class HandEyeCalibration:
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
 
     def run(self):
+        """
+        Main function to run hand-eye calibration process.
+
+        This method captures images of a chessboard pattern using a camera and records the corresponding robot TCP positions.
+        Then it performs calibration calculations to determine 4x4 transformation matrix between camera and robot base.
+
+        Returns:
+            None
+        """
         chess_image = None
         self._logger.info(f'IF YOU ARE READY PRESS "i" TO SAVE THE CHECKERBOARD IMAGE FOR CALIBRATION')
         while self.camera.cap.isOpened():
@@ -55,7 +86,6 @@ class HandEyeCalibration:
                     rvec, tvec = self.image_processor.calculate_rvec_tvec(u_chess_image, point_shift=coords)
                     self.image_processor.show_chess_corner(u_chess_image, point=coords)
                     self.rvec_tvec_pairs.append((rvec, tvec))
-
                     self._logger.info(f'PRESS "s" TO CONFIRM THAT ROBOT IS ON PLACE FOR POINT {index}: {coords}')
                     while True:
                         k2 = cv2.waitKey(5)
@@ -67,7 +97,6 @@ class HandEyeCalibration:
                 cv2.destroyWindow("POINT GUIDANCE")
                 self._logger.info("RECEIVED ALL POSES - PRESS ESC")
             cv2.imshow('Camera', img)
-
         self.camera.cap.release()
         cv2.destroyAllWindows()
 
@@ -78,7 +107,16 @@ class HandEyeCalibration:
             self._logger.debug(f'\tcamera tvec: {self.rvec_tvec_pairs[index-1][1]}')
 
 
-    def prepare_camera_mtx(self):
+    def prepare_object_camera_mtx(self):
+        """
+        Prepare the rotation and translation matrix for object seen by camera.
+
+        This method combine the rotation and translation 4x4 matrix for the object based on the provided rotation and
+        translation vectors. It stores result matrix in the class `camera_mtx` list.
+
+        Returns:
+            None
+        """
         for index, (rvec, tvec) in enumerate(self.rvec_tvec_pairs):
             self._logger.debug(f'Calculating rotation&translation matrix for camera no. {index}')
             mtx = np.zeros((4, 4))
@@ -92,6 +130,15 @@ class HandEyeCalibration:
             self.camera_mtx.append(mtx)
 
     def prepare_robot_mtx(self):
+        """
+        Prepares the rotation and translation 4x4 matrix from robot's TCP position.
+
+        This method calculates the rotation and translation (TCP to robot's base) 4x4 matrix from 
+        robot position (X, Y, Z, Roll, Pitch, Yaw). It stores result matrix in the class `robot_mtx` list.
+
+        Returns:
+            None
+        """
         for index, pos in enumerate(self.robot_positions):            
             pos = list(pos)
             self._logger.debug(f'Calculating rotation&translation matrix for robot position no. {index}')
@@ -111,6 +158,17 @@ class HandEyeCalibration:
 
 
     def calibrate_tsai(self):
+        """
+        Performs Tsai's hand-eye calibration algorithm.
+
+        This method calculates the the rotation and translation 4x4 matrix beetwen camera and robot base 
+        using the Tsai hand-eye calibration algorithm with the camera and robot matrices
+        stored in the `camera_mtx` and `robot_mtx` attributes of the class. Then saves the result to 
+        a pickle file named 'tsai_results.pkl'.
+
+        Returns:
+            None
+        """
         A_list = self.camera_mtx.copy()
         B_list = self.robot_mtx.copy()
 
@@ -154,11 +212,23 @@ class HandEyeCalibration:
         self._logger.info(f"Calculated Tsai result: \n{self.tsai_result}")
         
         with open('tsai_results.pkl', 'wb') as f:
-                pickle.dump(self.tsai_result, f)
+            pickle.dump(self.tsai_result, f)
 
         self._logger.info(f"Tsai result saved to tsai_results.pkl")
 
     def calibrate_li(self):
+        """
+        Performs Li's hand-eye calibration algorithm.
+
+        This method calculates the the rotation and translation 4x4 matrix beetwen camera and robot base 
+        using the Li hand-eye calibration algorithm with the camera and robot matrices
+        stored in the `camera_mtx` and `robot_mtx` attributes of the class. Then saves the result to 
+        a pickle file named 'li_results.pkl'.
+
+        Returns:
+            None
+        """
+
         A_list = self.camera_mtx.copy()
         B_list = self.robot_mtx.copy()
         
