@@ -21,6 +21,19 @@ class NN_Preparing:
         self._logger.debug(f'NN_Preparing({self}) was initialized.')
 
     def prepare_image(self, image_path, save_path, roi_points=None):
+        """
+        Preprocesses an image by performing various operations such as loading camera parameters,
+        ignoring the background, undistorting the image, applying binarization, finding contours,
+        cropping the image, and saving the resulting object.
+
+        Args:
+            image_path (str): The path to the input image.
+            save_path (str): The path to save the resulting object.
+            roi_points (list of tuples, optional): The region of interest points for ignoring the background.
+
+        Returns:
+            None
+        """
         mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         if img is None:
@@ -41,6 +54,17 @@ class NN_Preparing:
             self._logger.error(f'No objects found in {image_path}')
 
     def process_images_in_folder(self, reference_folder, results_folder, roi_points=None):
+        """
+        Process images in a given folder and save the processed images to a results folder.
+
+        Args:
+            reference_folder (str): The path to the folder containing the reference images.
+            results_folder (str): The path to the folder where the processed images will be saved.
+            roi_points (list, optional): List of region of interest (ROI) points. Defaults to None.
+
+        Returns:
+            None
+        """
         for root, dirs, files in os.walk(reference_folder):
             self._logger.info(f'Photo processing at:\n'
                             f'\troot: \t{root}\n'
@@ -67,6 +91,17 @@ class NN_Training:
         self._logger.debug(f'NN_Training({self}) was initialized.')
 
     def load_images_from_folder(self, folder, label, image_size=(28, 28)):
+        """
+        Load images from a specified folder and resize them to a given image size.
+
+        Args:
+            folder (str): The path to the folder containing the images.
+            label (str): The label to assign to the loaded images.
+            image_size (tuple, optional): The desired size of the images. Defaults to (28, 28).
+
+        Returns:
+            tuple: A tuple containing two lists - the loaded images and their corresponding labels.
+        """
         images = []
         labels = []
         for filename in os.listdir(folder):
@@ -79,6 +114,17 @@ class NN_Training:
         return images, labels
 
     def predict_shape(image_path, model, image_size=(28, 28)):
+        """
+        Predicts the shape of an image using a trained model.
+
+        Parameters:
+        - image_path (str): The path to the image file.
+        - model: The trained model used for prediction.
+        - image_size (tuple): The desired size of the image (default: (28, 28)).
+
+        Returns:
+        - prediction: The predicted shape of the image.
+        """
         img = io.imread(image_path, as_gray=True)
         img = transform.resize(img, image_size)
         img = img.flatten().reshape(1, -1)
@@ -177,7 +223,7 @@ class NN_Classification:
         self._logger.debug(f'NN_Classification({self}) was initialized.')
 
 
-    def prepare_image(self, image_path):
+    def prepare_image_from_path(self, image_path):
         mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
         # read image
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -195,6 +241,23 @@ class NN_Classification:
         # save
         return objects, coordinates, roi_contours
 
+    def prepare_frame(self, frame):
+        mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
+        img = frame
+        if len(frame.shape) == 3 and frame.shape[2] == 3:
+            # Convert to grayscale
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # ignore background                
+        iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
+        # undistort
+        # uimg = self.image_processor.undistort_frame(iimg, mtx, distortion)
+        # binarize
+        buimg = self.image_processor.apply_binarization(iimg, 'standard')
+        # find contour + crop
+        objects, coordinates, _ = self.image_processor.crop_image(buimg)
+        # save
+        return buimg, objects, coordinates, roi_contours
+    
     def predict_shape(self, img, model, image_size=(28, 28)):
         img = transform.resize(img, image_size)
         img = img.flatten().reshape(1, -1)

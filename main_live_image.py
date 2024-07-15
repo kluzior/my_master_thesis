@@ -32,11 +32,16 @@ def process_frame(frame, classifier, image_processor, mlp_model):
     shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
 
     img_to_show = frame.copy()
-    mtx, distortion = image_processor.load_camera_params('CameraParams.npz')
-    img_to_show = image_processor.undistort_frame(img_to_show, mtx, distortion)
+    # mtx, distortion = image_processor.load_camera_params('CameraParams.npz')
+    # img_to_show = image_processor.undistort_frame(img_to_show, mtx, distortion)
 
 
     buimg, objects, coordinates, roi_contours = classifier.prepare_frame(frame)
+
+
+    # Draw ROI contours 
+    cv2.drawContours(img_to_show, roi_contours, -1, (255, 0, 255), 2)
+    cv2.putText(img_to_show, "ROI", (roi_contours[0][0][0][0], roi_contours[0][0][0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 255), 2)
 
     # buimg = image_processor.apply_binarization(gray_frame, 'standard')
     for idx, object in enumerate(objects):
@@ -89,10 +94,13 @@ if __name__ == "__main__":
     stop_event = Event()
     
     # declaration objects of my classes
-    my_camera = Camera(1)
     my_image_framework = ImageProcessor()
-    
+    mtx, distortion = my_image_framework.load_camera_params('CameraParams.npz')
+
+
+    my_camera = Camera(mtx, distortion, 1)
     # get ROI point for processing
+    # table_roi_points = my_image_framework.get_roi_points(my_image_framework.undistort_frame(my_camera.get_frame(), mtx, distortion))
     table_roi_points = my_image_framework.get_roi_points(my_camera.get_frame())
 
     # import MLP model
