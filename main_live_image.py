@@ -1,26 +1,12 @@
 from packages2.image_processor import ImageProcessor
 from packages2.neural_network import NN_Classification
 from packages2.camera import Camera
-import numpy as np
-from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score
-from skimage import io, color, transform
 import joblib
-import os
 import cv2
-import glob
 from threading import Thread, Event
 from queue import Queue
-from packages2.neural_network import NN_Classification
-
-
-
 
 def process_frame(frame, classifier, image_processor, mlp_model):
-    # Example processing: Convert to grayscale
-    # gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # objects, coordinates, roi_contours = classifier.prepare_image_from_path(image)
     shape_colors = {
         'None': (0, 0, 0),          #  Black for unknown shape
         'Label1': (255, 0, 0),      # Blue for Label1
@@ -32,18 +18,13 @@ def process_frame(frame, classifier, image_processor, mlp_model):
     shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
 
     img_to_show = frame.copy()
-    # mtx, distortion = image_processor.load_camera_params('CameraParams.npz')
-    # img_to_show = image_processor.undistort_frame(img_to_show, mtx, distortion)
-
 
     buimg, objects, coordinates, roi_contours = classifier.prepare_frame(frame)
-
 
     # Draw ROI contours 
     cv2.drawContours(img_to_show, roi_contours, -1, (255, 0, 255), 2)
     cv2.putText(img_to_show, "ROI", (roi_contours[0][0][0][0], roi_contours[0][0][0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 255), 2)
 
-    # buimg = image_processor.apply_binarization(gray_frame, 'standard')
     for idx, object in enumerate(objects):
         pred = classifier.predict_shape(object, mlp_model)
         shape_label = shape_labels[pred[0]]
@@ -53,10 +34,7 @@ def process_frame(frame, classifier, image_processor, mlp_model):
         cv2.rectangle(img_to_show, (x, y), (x + w, y + h), shape_color, 2)
         cv2.putText(img_to_show, shape_label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, shape_color, 2)
 
-    # Add more processing steps here
     return buimg, img_to_show
-
-
 
 
 def camera_loop(camera_index, frame_queue, ready_queue, my_camera, stop_event):
@@ -86,6 +64,7 @@ def processing_loop(frame_queue, ready_queue, stop_event, table_roi_points, mlp_
 if __name__ == "__main__":
 ### PARAMS&PATHS ###
     model_file_path = 'models/mlp_model_accuracy_1_0000_lbfgs_logistic_constant_batch32_09-07_03-31.joblib'
+    camera_calib_result_path = 'CameraParams.npz'
 
 ### INIT ###
     # declaration queues, events etc.
@@ -95,19 +74,15 @@ if __name__ == "__main__":
     
     # declaration objects of my classes
     my_image_framework = ImageProcessor()
-    mtx, distortion = my_image_framework.load_camera_params('CameraParams.npz')
+    mtx, distortion = my_image_framework.load_camera_params(camera_calib_result_path)
 
 
     my_camera = Camera(mtx, distortion, 1)
     # get ROI point for processing
-    # table_roi_points = my_image_framework.get_roi_points(my_image_framework.undistort_frame(my_camera.get_frame(), mtx, distortion))
     table_roi_points = my_image_framework.get_roi_points(my_camera.get_frame())
 
     # import MLP model
     mlp_model = joblib.load(model_file_path)
-
-
-
 
 ### PROGRAM ###
     ready_queue.put(True)
