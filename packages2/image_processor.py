@@ -67,7 +67,20 @@ class ImageProcessor:
         return ignored_image, contours
     
 
-    def calculate_rvec_tvec(self, frame, point_shift=(0,0), chess_size=(8,7), side_of_chess_mm=23):
+    def calculate_rvec_tvec(self, frame, point_shift=(0,0), chess_size=(8,7), side_of_chess_mm=40):
+        """
+        Calculates the chessboard's rotation (rvecs) and translation vector (tvecs) using the solvePnP method.
+
+        Args:
+            frame: The input frame
+            point_shift: A tuple representing the shift of the chessboard corners in the x and y directions
+            chess_size: A tuple representing the number of inner corners per chessboard row and column
+            side_of_chess_mm: The size of each square on the chessboard in millimeters
+
+        Returns:
+            rvecs: The rotation vector
+            tvecs: The translation vector
+        """
         mtx, distortion = self.load_camera_params('CameraParams.npz')
         # prepare chessboard corners in real world 
         objp = np.zeros((chess_size[0] * chess_size[1], 3), np.float32)
@@ -97,3 +110,83 @@ class ImageProcessor:
             cv2.imshow('POINT GUIDANCE', image_to_show)
         else:
             self._logger.error("Nie znaleziono narożników szachownicy.")
+
+    def get_roi_points(self, frame):
+        while True:
+            def click_event(event, x, y, flags, params):
+                roi_points, img = params['roi_points'], params['img']
+                if event == cv2.EVENT_LBUTTONDOWN:
+                    roi_points.append([x, y])
+                    cv2.circle(img, (x, y), 5, (255, 0, 0), -1)
+                    cv2.imshow("image", img)
+
+            img = frame.copy()
+            if img is None:
+                print("Error loading image")
+                return None
+
+            roi_points = []
+
+            cv2.imshow('image', img)
+            cv2.setMouseCallback('image', click_event, {'roi_points': roi_points, 'img': img})
+
+            while True:
+                if cv2.waitKey(20) == 27:  # Esc key
+                    break
+
+            if len(roi_points) > 0:
+                overlay = img.copy()
+                pts = np.array([roi_points], np.int32)
+                cv2.fillPoly(overlay, [pts], (255, 0, 0, 70))
+                cv2.addWeighted(overlay, 0.5, img, 0.5, 0, img)
+                cv2.imshow("ROI", img)
+                cv2.waitKey(1)
+
+            user_input = input("Accept ROI? (y/n): ")
+            if user_input.lower() == 'y':
+                cv2.destroyAllWindows()
+                roi_array = np.array(roi_points)
+                print("ROI points saved as:\n", roi_array)
+                return roi_array
+            else:
+                print("ROI selection cancelled. Trying again...")
+                cv2.destroyAllWindows()
+
+    def find_centroid(self, contour):
+        M = cv2.moments(contour)
+        if M["m00"] == 0:
+            return None
+        cx = int(M["m10"] / M["m00"])
+        cy = int(M["m01"] / M["m00"])
+        return np.array([cx, cy], dtype=np.float32)
+    
+
+    # NOT TESTED
+    def is_centroid_applicable_for_gripper(self, centroid, contours, frame, scale_factor=1):
+        """
+        Check if the centroid is applicable for the gripper.
+        
+        :param centroid: Tuple of (x, y) coordinates for the centroid.
+        :param contours: List of contours to check against.
+        :param frame: The image frame to draw on and check.
+        :param scale_factor: Scale factor to convert mm to pixels.
+        :return: Boolean indicating if the centroid is applicable.
+        """
+        gripper_radius_mm = 20
+        gripper_radius_pixels = gripper_radius_mm * scale_factor
+
+        mask = np.zeros_like(frame, np.uint8)
+
+        cv2.circle(mask, centroid, int(gripper_radius_pixels), (255, 255, 255), -1)
+
+        for contour in contours:
+            # Create a mask for the current contour
+            contour_mask = np.zeros_like(self.image, np.uint8)
+            cv2.drawContours(contour_mask, [contour], -1, (255, 255, 255), -1)
+
+            # Check for intersection
+            intersection = cv2.bitwise_and(mask, contour_mask)
+            if np.any(intersection > 0):
+                return False
+
+        return True
