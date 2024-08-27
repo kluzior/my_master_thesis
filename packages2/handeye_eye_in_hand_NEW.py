@@ -349,7 +349,7 @@ class HandEyeCalibration:
 
 
 # CALCULATING 
-    def calculate_point_to_robot_base(self, files_path):
+    def calculate_point_to_robot_base(self, files_path, point_shiftt=(0,0)):
         data = np.load(f"R_T_results_tsai.npz")
         camera_tcp_mtx = data['camera_tcp_mtx']
         # image_procesor = ImageProcessor()
@@ -378,25 +378,37 @@ class HandEyeCalibration:
 
 
 
-        cam_rvec, cam_tvec = self.image_procesor.calculate_rvec_tvec(uimg)
+        cam_rvec, cam_tvec = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shiftt)
         obj_to_cam_mtx = self.prepare_one_mtx(cam_rvec, cam_tvec)
 
         print(f"\n obj_to_cam_mtx: {obj_to_cam_mtx}")
 
 
 
-        obj_to_tcp_mtx = obj_to_cam_mtx @ camera_tcp_mtx
+        # obj_to_tcp_mtx = np.dot(obj_to_cam_mtx, camera_tcp_mtx) #obj_to_cam_mtx @ camera_tcp_mtx
+        # obj_to_tcp_mtx2 = np.dot(camera_tcp_mtx, obj_to_cam_mtx)
 
-        print(f"\nobj_to_tcp_mtx: {obj_to_tcp_mtx}\n")
+        # print(f"\nobj_to_tcp_mtx: {obj_to_tcp_mtx}\n")
+        # print(f"\nobj_to_tcp_mtx2: {obj_to_tcp_mtx2}\n")
 
         rob_rvec, rob_tvec = self.calculate_rvec_tvec_from_robot_pose2(wait_pose)
-        rob_mtx = self.prepare_one_mtx(rob_rvec, rob_tvec)
-
-        print(f"\n rob_mtx: {rob_mtx}")
+        rob_base_mtx = self.prepare_one_mtx(rob_rvec, rob_tvec)
 
 
-        obj_to_base_mtx = obj_to_tcp_mtx @ rob_mtx
+        cam_to_base = np.dot(rob_base_mtx, camera_tcp_mtx)
+
+
+
+        obj_to_base_mtx = np.dot(cam_to_base, obj_to_cam_mtx)
+
+
+        print(f"\n rob_mtx: {rob_base_mtx}")
+
+
+        # obj_to_base_mtx = obj_to_tcp_mtx @ rob_mtx
         print(f"\nobj_to_base_mtx: {obj_to_base_mtx}")
+
+        return obj_to_base_mtx
 
 
 
