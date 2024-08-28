@@ -1,5 +1,6 @@
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 from packages2.robot_functions import RobotFunctions
+from packages2.robot_positions import RobotPositions
 import numpy as np
 import cv2
 import socket 
@@ -51,7 +52,7 @@ he = HandEyeCalibration(camera_params_path, c)
 # files_path =  "data/results/for_hand_eye_calib/images_28-08_13-36" # DAJE SPOKO WYNIKI, TCP 110mm
 # files_path =  "data/results/for_hand_eye_calib/images_28-08_13-38"  # analogicznie, ale TCP 310mm
 
-files_path =  "data/results/for_hand_eye_calib/images_28-08_13-38"
+files_path =  "data/results/for_hand_eye_calib/images_28-08_13-36"
 
 # he.run_get_data()
 
@@ -78,4 +79,5 @@ he.run_calibration(files_path)
 # conv_pose = convert_pose(pose)
 # print(f"conv_pose: {conv_pose}")
 
-# robot_functions.moveJ(convert_pose(pose))
+# # robot_functions.moveJ(convert_pose(pose))
+# robot_functions.moveJ(RobotPositions.pose_chess_0_0_point)

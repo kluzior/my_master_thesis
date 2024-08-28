@@ -239,48 +239,21 @@ class HandEyeCalibration:
         images = self.get_images(files_path)
         print(f"LEN OF IMAGES: {len(images)}")
         print(f"LEN OF ROBOT POSES: {len(robot_pose_read_from_robot)}")
-        # print(len(robot_pose_read_from_robot))
         cam_rvecs = []
         cam_tvecs = []
         rob_rvecs = []
         rob_tvecs = []
         for robot_pose, image in zip(robot_pose_read_from_robot, images):
-            image_to_show = image.copy()
-            # print(f"robot pose: {robot_pose}")
-            # cv2.imshow("Image", image)
-
             u_image = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
-            
-            # cv2.imshow("uImage", u_image)
-
 
             cam_rvec, cam_tvec = self.image_procesor.calculate_rvec_tvec(u_image)
-            cam_mtx = self.prepare_one_mtx(cam_rvec, cam_tvec)
             cam_rvecs.append(cam_rvec)
             cam_tvecs.append(cam_tvec)
 
-            # print(f"Calculated object to camera rvec: {cam_rvec}")
-            # print(f"Calculated object to camera tvec: {cam_tvec}")
+            rob_rvecs.append(robot_pose[3:])
+            rob_tvecs.append(robot_pose[:3])
 
-            rob_rvec, rob_tvec = self.calculate_rvec_tvec_from_robot_pose(robot_pose)
-            rob_mtx = self.prepare_one_mtx(rob_rvec, rob_tvec)
-            rob_rvecs.append(rob_rvec)
-            rob_tvecs.append(rob_tvec)
-
-            # print(f"Calculated robot to base rvec: {rob_rvec}")
-            # print(f"Calculated robot to base tvec: {rob_tvec}")
-
-            gray = cv2.cvtColor(image_to_show, cv2.COLOR_BGR2GRAY)
-
-            ret, corners = cv2.findChessboardCorners(gray, (7,8), None)
-            # cv2.drawChessboardCorners(image_to_show, (8, 7), corners, True)
-
-            # cv2.imshow("Image with corners", image_to_show)
-
-
-
-        print("DONE")
-        print(f"len of: {len(cam_rvecs)}")
+        print("CALIBRATION DONE")
 
         # proceed with OpenCv calibration
         R1, T1 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_TSAI)   
