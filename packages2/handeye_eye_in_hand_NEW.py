@@ -30,17 +30,17 @@ class HandEyeCalibration:
         else:
             self.run_calibration(from_file)
 
-    def show_camera(self, frame_event, frame_storage):
+    def show_camera(self, frame_event, frame_storage, stop_event):
         cap = cv2.VideoCapture(1)
-        while True:
+        while not stop_event.is_set():
             ret, frame = cap.read()
             if not ret:
                 break
-            cv2.imshow("All Frames", frame)  # Display each frame
+            cv2.imshow("Live camera view", frame)
             if frame_event.is_set():
-                frame_storage['frame'] = frame  # Store frame in dictionary on request
-                frame_event.clear()  # Reset event after storing frame
-            if cv2.waitKey(1) == ord('q'):  # Allow exiting the loop by pressing 'q'
+                frame_storage['frame'] = frame
+                frame_event.clear()
+            if cv2.waitKey(1) == ord('q'):
                 break
 
         cap.release()
@@ -48,13 +48,13 @@ class HandEyeCalibration:
 
     def run_get_data(self):
         frame_event = threading.Event()
+        stop_event = threading.Event()
         frame_storage = {}
-        robot_poses = RobotPositions()
-        # Create a new thread for the camera function
-        camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage))
+        camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage, stop_event))
         camera_thread.start()
 
         robot_functions = RobotFunctions(self.c)
+        robot_poses = RobotPositions()
 
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
@@ -90,7 +90,7 @@ class HandEyeCalibration:
 
                 np.savez(f"{directory_waiting}/wait_pose.npz", wait_pose=pose_waiting)
 
-            for pose in robot_poses.poses_2:
+            for pose in robot_poses.new_handeye_poses:
                 robot_functions.moveJ(pose)
 
                 frame_event.set()  # Signal camera thread to capture frame
@@ -144,6 +144,8 @@ class HandEyeCalibration:
         except socket.error as socketerror:
             print("Socket error: ", socketerror)
         finally:
+            stop_event.set()
+            camera_thread.join()            
             # c.close()
             # s.close()
             print("Socket closed")
