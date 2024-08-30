@@ -35,7 +35,7 @@ class CameraCalibrator:
             ret, frame = cap.read()
             if not ret:
                 break
-            cv2.imshow("All Frames", frame)
+            cv2.imshow("Live camera view", frame)
             if frame_event.is_set():
                 frame_storage['frame'] = frame
                 frame_event.clear()
