@@ -19,6 +19,7 @@ class HandEyeCalibration:
         self.mtx, self.dist = self.image_procesor.load_camera_params(self.camera_params_path)
         self.c = c
         self.chess_size = (8,7)
+        self.robot_functions = RobotFunctions(self.c)
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
@@ -215,56 +216,58 @@ class HandEyeCalibration:
         t_combined = np.dot(R2, t1) + t2
         return R_combined, t_combined
 
-# CALCULATING 
-    def calculate_point_to_robot_base(self, files_path, point_shiftt=(0,0)):
-        # Get object to camera transformation matrix
-        image_path = files_path + "/waiting_pos/WAITING_POSE.jpg"
-        image = cv2.imread(image_path)
+    def determine_rvec_tvec_for_chess_point(self, img_path, point_shift=(0,0)):
+        image = cv2.imread(img_path)
         uimg = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
-        obj2cam_rvec, obj2cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shiftt)
+        obj2cam_rvec, obj2cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shift)
         obj2cam_rmtx, _ = cv2.Rodrigues(obj2cam_rvec)
-        print(f"obj2cam_rvec: {obj2cam_rvec}")
-        print(f"obj2cam_rmtx: {obj2cam_rmtx}")
-        print(f"obj2cam_tvec: {obj2cam_tvec}")
+        return obj2cam_rmtx, obj2cam_tvec
 
+    def calculate_point_pose2robot_base(self, obj2cam_rmtx, obj2cam_tvec, handeye_path, handeye_type='tsai'):
+        handeye_files = {
+            'tsai'      : 'R_T_results_tsai.npz',
+            'park'      : 'R_T_results_park.npz',
+            'horaud'    : 'R_T_results_horaud.npz',
+            'daniilidis': 'R_T_results_daniilidis.npz'
+        }
+        if handeye_type not in handeye_files:
+            raise ValueError(f"Invalid handeye_type: {handeye_type}. Must be one of {list(handeye_files.keys())}")
+        
         # Import calculated camera to TCP transformation matrix
-        data = np.load(f"{files_path}/R_T_results_tsai.npz")
+        data = np.load(f"{handeye_path}/{handeye_files[handeye_type]}")
         camera2tcp_rmtx = data['camera_tcp_rmtx']
         camera2tcp_tvec = data['camera_tcp_tvec']
-        print(f"camera2tcp_rmtx: {camera2tcp_rmtx}")
-        print(f"camera2tcp_tvec: {camera2tcp_tvec}")
+
+        # Get TCP to robot base transformation matrix
+        data = np.load(f"{handeye_path}/waiting_pos/wait_pose.npz")
+        wait_pose = data['wait_pose']
+        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose2rvec_tvec(wait_pose)
 
         # Calculate object to TCP transformation matrix
         obj2tcp_rmtx, obj2tcp_tvec = self.combine_transformations(obj2cam_rmtx, obj2cam_tvec, camera2tcp_rmtx, camera2tcp_tvec)
-        print(f"obj2tcp_rmtx: {obj2tcp_rmtx}")
-        print(f"obj2tcp_tvec: {obj2tcp_tvec}")
-
-        # Get TCP to robot base transformation matrix
-        data = np.load(f"{files_path}/waiting_pos/wait_pose.npz")
-        wait_pose = data['wait_pose']
-        print(f"wait pose: {wait_pose}")
-        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose2rvec_tvec(wait_pose)
-        print(f"tcp2base_rmtx: {tcp2base_rmtx}")
-        print(f"tcp2base_rvec: {tcp2base_rvec}")
-        print(f"tcp_to_base_tvec: {tcp2base_tvec}")
 
         # Calculate object to base transformation matrix
         obj2base_rmtx, obj2base_tvec = self.combine_transformations(obj2tcp_rmtx, obj2tcp_tvec, tcp2base_rmtx, tcp2base_tvec)
-        print(f"obj2base_rmtx: {obj2base_rmtx}")
-        print(f"obj2base_tvec: {obj2base_tvec}")
+        
         obj2base_rvec, _ = cv2.Rodrigues(obj2base_rmtx)
-        print(f"obj2base_rvec: {obj2base_rvec}")
+        final_pose = self.rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
+        return final_pose
 
-        return self.rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
+    def generate_test_pose(self, files_path, point_shift=(0,0), handeye_type='tsai'):
+        chess_path = files_path + "/waiting_pos/WAITING_POSE.jpg"
+        obj2cam_rmtx, obj2cam_tvec = self.determine_rvec_tvec_for_chess_point(chess_path, point_shift)
+        final_pose = self.calculate_point_pose2robot_base(obj2cam_rmtx, obj2cam_tvec, files_path, handeye_type)
+        return final_pose
     
+    def send_robot_to_test_poses(self, files_path, handeye_type='tsai'):
+        test_chess_points = [(0,0), (0,6), (7,6), (7,0), (4,3)]
 
+        for point_shift in test_chess_points:
+            # calculate pose
+            target_pose = self.generate_test_pose(files_path, point_shift, handeye_type)
+            self._logger.info(f"calculated pose: {target_pose}")
 
-
-
-
-
-
-
-
+            # send robot to poses
+            # self.robot_functions.moveJ_pose(target_pose)
 
 
