@@ -112,7 +112,7 @@ class HandEyeCalibration:
 
                     _img_path = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
                     cv2.imwrite(_img_path, _img); n+=1
-                    self._logger.info(f"Photo no. {i} was saved as: {_img_path}")
+                    self._logger.info(f"Raw photo no. {i} was saved as: {_img_path}")
                     cv2.waitKey(500)
                     cv2.destroyWindow("Captured frame")
                 robot_pose = robot_functions.give_pose()
@@ -139,8 +139,6 @@ class HandEyeCalibration:
         
         return True, directory_with_time
 
-
-# CALIBRATION
     def get_images(self, path=''):
         images = []
         if not os.path.exists(path):
@@ -160,57 +158,47 @@ class HandEyeCalibration:
     def run_calibration(self, files_path):
         data = np.load(f"{files_path}/robot_poses.npz")
         robot_poses_read_from_robot = data['robot_poses_read_from_robot']
-
         images = self.get_images(files_path)
-        print(f"LEN OF IMAGES: {len(images)}")
-        print(f"LEN OF ROBOT POSES: {len(robot_poses_read_from_robot)}")
+        self._logger.info(f"number of loaded photos: {len(images)} number of loaded poses: {len(robot_poses_read_from_robot)}")
         cam_rvecs = []
         cam_tvecs = []
         rob_rvecs = []
         rob_tvecs = []
         for robot_pose, image in zip(robot_poses_read_from_robot, images):
             u_image = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
-
             cam_rvec, cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(u_image)
             cam_rvecs.append(cam_rvec)
             cam_tvecs.append(cam_tvec)
-
             rob_rvecs.append(robot_pose[3:])
             rob_tvecs.append(robot_pose[:3])
 
-        print("CALIBRATION DONE")
-
-        # proceed with OpenCv calibration
         R1, T1 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_TSAI)   
-        print("RESULTS OF CALIBRATION (cv2.CALIB_HAND_EYE_TSAI)")
-        print(f"R: {R1}")
-        print(f"T: {T1}")
+        self._logger.info("\nResults of hand-eye calibration with cv2.CALIB_HAND_EYE_TSAI")
+        self._logger.info(f"R: {R1}")
+        self._logger.info(f"T: {T1}")
 
         R2, T2 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_PARK )   
-        print("RESULTS OF CALIBRATION (cv2.CALIB_HAND_EYE_PARK )")
-        print(f"R: {R2}")
-        print(f"T: {T2}")
+        self._logger.info("\nResults of hand-eye calibration with cv2.CALIB_HAND_EYE_PARK")
+        self._logger.info(f"R: {R2}")
+        self._logger.info(f"T: {T2}")
 
         R3, T3 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_HORAUD)
-        print("RESULTS OF CALIBRATION (cv2.CALIB_HAND_EYE_HORAUD)")
-        print(f"R: {R3}")
-        print(f"T: {T3}")
+        self._logger.info("\nResults of hand-eye calibration with cv2.CALIB_HAND_EYE_HORAUD")
+        self._logger.info(f"R: {R3}")
+        self._logger.info(f"T: {T3}")
 
-        R5, T5 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_DANIILIDIS)
-        print("RESULTS OF CALIBRATION (cv2.CALIB_HAND_EYE_DANIILIDIS)")
-        print(f"R: {R5}")
-        print(f"T: {T5}")
+        R4, T4 = cv2.calibrateHandEye(rob_rvecs, rob_tvecs, cam_rvecs, cam_tvecs, method=cv2.CALIB_HAND_EYE_DANIILIDIS)
+        self._logger.info("\nResults of hand-eye calibration with cv2.CALIB_HAND_EYE_DANIILIDIS")
+        self._logger.info(f"R: {R4}")
+        self._logger.info(f"T: {T4}")
 
-
-        # Save to npz files
         np.savez(f"{files_path}/R_T_results_tsai.npz", camera_tcp_rmtx = R1, camera_tcp_tvec = T1)
         np.savez(f"{files_path}/R_T_results_park.npz", camera_tcp_rmtx = R2, camera_tcp_tvec = T2)
         np.savez(f"{files_path}/R_T_results_horaud.npz", camera_tcp_rmtx = R3, camera_tcp_tvec = T3)
-        np.savez(f"{files_path}/R_T_results_daniilidis.npz", camera_tcp_rmtx = R5, camera_tcp_tvec = T5)
+        np.savez(f"{files_path}/R_T_results_daniilidis.npz", camera_tcp_rmtx = R4, camera_tcp_tvec = T4)
+        self._logger.info(f"Results of hand-eye calibration from all methods saved to .npz file")
 
-
-
-    def pose_to_matrix(self, pose):
+    def pose2rvec_tvec(self, pose):
         tvec = np.array(pose[:3])
         rvec = np.array(pose[3:])
         rotation_matrix, _ = cv2.Rodrigues(rvec)
@@ -255,7 +243,7 @@ class HandEyeCalibration:
         data = np.load(f"{files_path}/waiting_pos/wait_pose.npz")
         wait_pose = data['wait_pose']
         print(f"wait pose: {wait_pose}")
-        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose_to_matrix(wait_pose)
+        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose2rvec_tvec(wait_pose)
         print(f"tcp2base_rmtx: {tcp2base_rmtx}")
         print(f"tcp2base_rvec: {tcp2base_rvec}")
         print(f"tcp_to_base_tvec: {tcp2base_tvec}")
