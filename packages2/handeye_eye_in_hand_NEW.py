@@ -18,6 +18,7 @@ class HandEyeCalibration:
         self.image_procesor = ImageProcessor(self.camera_params_path)
         self.mtx, self.dist = self.image_procesor.load_camera_params(self.camera_params_path)
         self.c = c
+        self.chess_size = (8,7)
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
@@ -58,92 +59,85 @@ class HandEyeCalibration:
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
 
-            robot_pose_read_from_robot = []
             folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
-            waiting_pos_folder = folder_with_time + "/waiting_pos"
             directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)
 
+            waiting_pos_folder = folder_with_time + "/waiting_pos"
             directory_waiting = Path("data/results/for_hand_eye_calib/"+waiting_pos_folder)
             directory_waiting.mkdir(parents=True, exist_ok=True)
 
-
-            frame_event.set()  # Signal camera thread to capture frame
-            
+            frame_event.set()  # signal camera thread to capture frame
             while frame_event.is_set():
-                time.sleep(0.1)  # Wait a bit before checking again
+                time.sleep(0.1)  # wait a bit before checking again
 
             if 'frame' in frame_storage:
                 _img = frame_storage['frame']
-                img_name = f"{directory_waiting}/WAITING_POSE.jpg"
-                cv2.imwrite(img_name, _img)
+                _img_path = f"{directory_waiting}/WAITING_POSE.jpg"
+                cv2.imwrite(_img_path, _img)
+                self._logger.info(f"Photo of waiting pose was saved as: {_img_path}")
 
                 robot_waiting_pose = robot_functions.give_pose()
                 pose_waiting = list(robot_waiting_pose)
-                print(f"pose_waiting: {pose_waiting}")
 
+                # debug saving to .txt
                 with open(os.path.join(directory_waiting, 'wait_pose.txt'), 'w') as file2:
                     file2.write(','.join(map(str, pose_waiting)) + '\n')
 
-                np.savez(f"{directory_waiting}/wait_pose.npz", wait_pose=pose_waiting)
+                _pose_path = f"{directory_waiting}/wait_pose.npz"
+                np.savez(_pose_path, wait_pose=pose_waiting)
+                self._logger.info(f"Robot waiting pose was saved as: {_pose_path}")
             
+            robot_poses_read_from_robot = []
             i = 0
-            for pose in robot_poses.new_handeye_poses:
+            n = 0
+            for pose in robot_poses.poses_2:
                 robot_functions.moveJ(pose)
 
-                frame_event.set()  # Signal camera thread to capture frame
-                
+                frame_event.set()
                 while frame_event.is_set():
-                    time.sleep(0.1)  # Wait a bit before checking again
-
+                    time.sleep(0.1)
+                
                 if 'frame' in frame_storage:
                     i+=1
                     _img = frame_storage['frame']
                     gray = _img.copy()
                     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
                     ugray = self.image_procesor.undistort_frame(gray, self.mtx, self.dist)
-                    ret, _ = cv2.findChessboardCorners(ugray, (7,8), None)
+                    ret, _ = cv2.findChessboardCorners(ugray, self.chess_size, None)
                     if not ret:
-                        print("****** PHOTO SKIPPED ******")
+                        self._logger.warning(f"Photo no. {i} was skipped!")
                         continue
                     cv2.imshow("Captured frame", _img)
 
-                    img_name = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
-                    cv2.imwrite(img_name, _img)
-                    print(f"Saved {img_name}")
+                    _img_path = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
+                    cv2.imwrite(_img_path, _img); n+=1
+                    self._logger.info(f"Photo no. {i} was saved as: {_img_path}")
                     cv2.waitKey(500)
                     cv2.destroyWindow("Captured frame")
-
-
                 robot_pose = robot_functions.give_pose()
-                pose = list(robot_pose)
-                robot_pose_read_from_robot.append(pose)
-                print("ROBOT POSE APPENDED!")
-                print(f"appended robot pose idx = {i}")
-                
-
+                robot_poses_read_from_robot.append(list(robot_pose))
+                self._logger.info(f"Robot pose no. {i} was appended to list")
                 time.sleep(1)
 
-            print("DONE")
-            print(f"robot_poses: {robot_pose_read_from_robot}")
-            print(f"i: {i}")
-            print(f"lenPose: {len(robot_pose_read_from_robot)}")
-            # Save to npz file
-            np.savez(f"{directory_with_time}/robot_poses.npz", robot_pose_read_from_robot=robot_pose_read_from_robot, pose_waiting=pose_waiting)
-
-            # Save to txt file
+            # debug saving to .txt
             with open(os.path.join(directory_with_time, 'robot_poses.txt'), 'w') as file:
-                for pose in robot_pose_read_from_robot:
+                for pose in robot_poses_read_from_robot:
                     file.write(','.join(map(str, pose)) + '\n')
-
+            
+            _pose_path = f"{directory_with_time}/robot_poses.npz"
+            np.savez(_pose_path, robot_poses_read_from_robot=robot_poses_read_from_robot, pose_waiting=pose_waiting)
+            self._logger.info(f"Robot poses was saved as: {_pose_path}")
+            
+            self._logger.info(f"number of stored photos: {n} number of stored poses: {len(robot_poses_read_from_robot)}")
         except socket.error as socketerror:
-            print("Socket error: ", socketerror)
+            self._logger.error("Socket error: ", socketerror)
         finally:
             stop_event.set()
             camera_thread.join()            
+            self._logger.info("Procedure of taking pictures for hand-eye calibration completed.")
         
         return True, directory_with_time
-
 
 
 # CALIBRATION
@@ -164,19 +158,17 @@ class HandEyeCalibration:
         return images     
 
     def run_calibration(self, files_path):
-
-        # Load from npz file
         data = np.load(f"{files_path}/robot_poses.npz")
-        robot_pose_read_from_robot = data['robot_pose_read_from_robot']
+        robot_poses_read_from_robot = data['robot_poses_read_from_robot']
 
         images = self.get_images(files_path)
         print(f"LEN OF IMAGES: {len(images)}")
-        print(f"LEN OF ROBOT POSES: {len(robot_pose_read_from_robot)}")
+        print(f"LEN OF ROBOT POSES: {len(robot_poses_read_from_robot)}")
         cam_rvecs = []
         cam_tvecs = []
         rob_rvecs = []
         rob_tvecs = []
-        for robot_pose, image in zip(robot_pose_read_from_robot, images):
+        for robot_pose, image in zip(robot_poses_read_from_robot, images):
             u_image = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
 
             cam_rvec, cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(u_image)

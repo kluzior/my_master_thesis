@@ -61,3 +61,8 @@ time.sleep(2)
 robot_functions.moveJ_pose(convert_pose(pose4))
 time.sleep(2)
 robot_functions.moveJ_pose(convert_pose(pose5))
+
+
+
+c.close()
+s.close()
