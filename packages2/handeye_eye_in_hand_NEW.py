@@ -1,8 +1,8 @@
 import time
-from packages2.cmd_generator import CmdGenerator  # Ensure this module is available
-from packages2.robot_positions import RobotPositions  # Ensure this module is available
-from packages2.robot_functions import RobotFunctions  # Ensure this module is available
-from packages2.image_processor import ImageProcessor  # Ensure this module is available
+from packages2.cmd_generator import CmdGenerator
+from packages2.robot_positions import RobotPositions
+from packages2.robot_functions import RobotFunctions
+from packages2.image_processor import ImageProcessor
 import socket
 import cv2
 import threading
@@ -21,6 +21,14 @@ class HandEyeCalibration:
         self.image_procesor = ImageProcessor(self.camera_params_path)
         self.mtx, self.dist = self.image_procesor.load_camera_params(self.camera_params_path)
         self.c = c
+
+    def run(self, from_file=None):
+        if from_file is None:
+            ret, flow_files_path = self.run_get_data()
+            if ret:
+                self.run_calibration(flow_files_path)
+        else:
+            self.run_calibration(from_file)
 
     def show_camera(self, frame_event, frame_storage):
         cap = cv2.VideoCapture(1)
@@ -46,34 +54,44 @@ class HandEyeCalibration:
         camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage))
         camera_thread.start()
 
-        # HOST = "192.168.0.1"
-        # PORT = 10000
-        # print("Start listening...")
-        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # s.bind((HOST, PORT))
-        # s.listen(5)
-        # c, addr = s.accept()
         robot_functions = RobotFunctions(self.c)
 
         try:
-            msg = self.c.recv(1024)
-            print(msg)
-            if msg == b"Hello server, robot here":
-                print("Robot requested for data!")
-                time.sleep(0.5)
+            robot_functions.moveJ(RobotPositions.look_at_chessboard)
 
-                robot_functions.moveJ(RobotPositions.look_at_chessboard)
+            robot_pose_read_from_robot = []
+            folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
+            waiting_pos_folder = folder_with_time + "/waiting_pos"
+            directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
+            directory_with_time.mkdir(parents=True, exist_ok=True)
 
-                robot_pose_read_from_robot = []
-                folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
-                waiting_pos_folder = folder_with_time + "/waiting_pos"
-                directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
-                directory_with_time.mkdir(parents=True, exist_ok=True)
+            directory_waiting = Path("data/results/for_hand_eye_calib/"+waiting_pos_folder)
+            directory_waiting.mkdir(parents=True, exist_ok=True)
+            i = 0
 
-                directory_waiting = Path("data/results/for_hand_eye_calib/"+waiting_pos_folder)
-                directory_waiting.mkdir(parents=True, exist_ok=True)
-                i = 0
+            frame_event.set()  # Signal camera thread to capture frame
+            
+            # Wait for the frame to be stored
+            while frame_event.is_set():
+                time.sleep(0.1)  # Wait a bit before checking again
+
+            # Now the frame should be available in frame_storage['frame']
+            if 'frame' in frame_storage:
+                _img = frame_storage['frame']
+                img_name = f"{directory_waiting}/WAITING_POSE.jpg"
+                cv2.imwrite(img_name, _img)
+
+                robot_waiting_pose = robot_functions.give_pose()
+                pose_waiting = list(robot_waiting_pose)
+                print(f"pose_waiting: {pose_waiting}")
+
+                with open(os.path.join(directory_waiting, 'wait_pose.txt'), 'w') as file2:
+                    file2.write(','.join(map(str, pose_waiting)) + '\n')
+
+                np.savez(f"{directory_waiting}/wait_pose.npz", wait_pose=pose_waiting)
+
+            for pose in robot_poses.poses_2:
+                robot_functions.moveJ(pose)
 
                 frame_event.set()  # Signal camera thread to capture frame
                 
@@ -83,73 +101,45 @@ class HandEyeCalibration:
 
                 # Now the frame should be available in frame_storage['frame']
                 if 'frame' in frame_storage:
-                    _img = frame_storage['frame']
-                    img_name = f"{directory_waiting}/WAITING_POSE.jpg"
-                    cv2.imwrite(img_name, _img)
+                    i+=1
+                    test_img = frame_storage['frame']
+                        
+                    gray = test_img.copy()
+                    gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
+                    ugray = self.image_procesor.undistort_frame(gray, self.mtx, self.dist)
+                    ret, corners = cv2.findChessboardCorners(ugray, (7,8), None)
+                    if not ret:
+                        print("****** PHOTO SKIPPED ******")
+                        continue
+                    cv2.imshow("Requested Frame", test_img)
 
-                    robot_waiting_pose = robot_functions.give_pose()
-                    pose_waiting = list(robot_waiting_pose)
+                    img_name = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
+                    cv2.imwrite(img_name, test_img)
+                    print(f"Saved {img_name}")
+                    cv2.waitKey(500)  # Wait for any key press
+                    cv2.destroyWindow("Requested Frame")
+                else:
+                    print("Frame was not captured")
+                robot_pose = robot_functions.give_pose()
+                pose = list(robot_pose)
+                robot_pose_read_from_robot.append(pose)
+                print("ROBOT POSE APPENDED!")
+                print(f"appended robot pose idx = {i}")
+                
 
-                    # Ensure the waiting_pos_folder exists
-                    if not os.path.exists(waiting_pos_folder):
-                        os.makedirs(waiting_pos_folder)
+                time.sleep(1)
 
-                    with open(os.path.join(directory_waiting, 'wait_pose.txt'), 'w') as file2:
-                        file2.write(','.join(map(str, pose_waiting)) + '\n')
+            print("DONE")
+            print(f"robot_poses: {robot_pose_read_from_robot}")
+            print(f"i: {i}")
+            print(f"lenPose: {len(robot_pose_read_from_robot)}")
+            # Save to npz file
+            np.savez(f"{directory_with_time}/robot_poses.npz", robot_pose_read_from_robot=robot_pose_read_from_robot, pose_waiting=pose_waiting)
 
-                    np.savez(f"{directory_waiting}/wait_pose.npz", wait_pose=pose_waiting)
-
-
-                for pose in robot_poses.new_handeye_poses:
-                    robot_functions.moveJ(pose)
-
-                    frame_event.set()  # Signal camera thread to capture frame
-                    
-                    # Wait for the frame to be stored
-                    while frame_event.is_set():
-                        time.sleep(0.1)  # Wait a bit before checking again
-
-                    # Now the frame should be available in frame_storage['frame']
-                    if 'frame' in frame_storage:
-                        i+=1
-                        test_img = frame_storage['frame']
-                            
-                        gray = test_img.copy()
-                        gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-                        ugray = self.image_procesor.undistort_frame(gray, self.mtx, self.dist)
-                        ret, corners = cv2.findChessboardCorners(ugray, (7,8), None)
-                        if not ret:
-                            print("****** PHOTO SKIPPED ******")
-                            continue
-                        cv2.imshow("Requested Frame", test_img)
-
-                        img_name = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
-                        cv2.imwrite(img_name, test_img)
-                        print(f"Saved {img_name}")
-                        cv2.waitKey(500)  # Wait for any key press
-                        cv2.destroyWindow("Requested Frame")
-                    else:
-                        print("Frame was not captured")
-                    robot_pose = robot_functions.give_pose()
-                    pose = list(robot_pose)
-                    robot_pose_read_from_robot.append(pose)
-                    print("ROBOT POSE APPENDED!")
-                    print(f"appended robot pose idx = {i}")
-                    
-
-                    time.sleep(1)
-
-                print("DONE")
-                print(f"robot_poses: {robot_pose_read_from_robot}")
-                print(f"i: {i}")
-                print(f"lenPose: {len(robot_pose_read_from_robot)}")
-                # Save to npz file
-                np.savez(f"{directory_with_time}/robot_poses.npz", robot_pose_read_from_robot=robot_pose_read_from_robot, pose_waiting=pose_waiting)
-
-                # Save to txt file
-                with open(os.path.join(directory_with_time, 'robot_poses.txt'), 'w') as file:
-                    for pose in robot_pose_read_from_robot:
-                        file.write(','.join(map(str, pose)) + '\n')
+            # Save to txt file
+            with open(os.path.join(directory_with_time, 'robot_poses.txt'), 'w') as file:
+                for pose in robot_pose_read_from_robot:
+                    file.write(','.join(map(str, pose)) + '\n')
 
         except socket.error as socketerror:
             print("Socket error: ", socketerror)
@@ -157,7 +147,8 @@ class HandEyeCalibration:
             # c.close()
             # s.close()
             print("Socket closed")
-            cv2.destroyAllWindows()
+        
+        return True, directory_with_time
 
 
 
@@ -246,7 +237,7 @@ class HandEyeCalibration:
         for robot_pose, image in zip(robot_pose_read_from_robot, images):
             u_image = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
 
-            cam_rvec, cam_tvec = self.image_procesor.calculate_rvec_tvec(u_image)
+            cam_rvec, cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(u_image)
             cam_rvecs.append(cam_rvec)
             cam_tvecs.append(cam_tvec)
 
@@ -283,10 +274,29 @@ class HandEyeCalibration:
         result_mtx_daniilidis = self.prepare_one_mtx2(R5, T5)
 
         # Save to npz files
-        np.savez(f"{files_path}/R_T_results_tsai.npz", camera_tcp_mtx = result_mtx_tsai)
-        np.savez(f"{files_path}/R_T_results_park.npz", camera_tcp_mtx = result_mtx_park)
-        np.savez(f"{files_path}/R_T_results_horaud.npz", camera_tcp_mtx = result_mtx_horaud)
-        np.savez(f"{files_path}/R_T_results_daniilidis.npz", camera_tcp_mtx = result_mtx_daniilidis)
+        np.savez(f"{files_path}/R_T_results_tsai.npz", camera_tcp_rmtx = R1, camera_tcp_tvec = T1, camera_tcp_mtx = result_mtx_tsai)
+        np.savez(f"{files_path}/R_T_results_park.npz", camera_tcp_rmtx = R2, camera_tcp_tvec = T2, camera_tcp_mtx = result_mtx_park)
+        np.savez(f"{files_path}/R_T_results_horaud.npz", camera_tcp_rmtx = R3, camera_tcp_tvec = T3, camera_tcp_mtx = result_mtx_horaud)
+        np.savez(f"{files_path}/R_T_results_daniilidis.npz", camera_tcp_rmtx = R5, camera_tcp_tvec = T5, camera_tcp_mtx = result_mtx_daniilidis)
+
+
+
+    def pose_to_matrix(self, pose):
+        tvec = np.array(pose[:3])
+        rvec = np.array(pose[3:])
+        rotation_matrix, _ = cv2.Rodrigues(rvec)
+        return rotation_matrix, rvec, tvec.reshape(-1, 1)
+
+    def rvec_tvec2pose(self, rvec, tvec):
+        x, y, z = tvec.flatten()
+        Rx, Ry, Rz = rvec.flatten()
+        pose = np.array([x, y, z, Rx, Ry, Rz])
+        return pose
+
+    def combine_transformations(self, R1, t1, R2, t2):
+        R_combined = np.dot(R2, R1)
+        t_combined = np.dot(R2, t1) + t2
+        return R_combined, t_combined
 
 # CALCULATING 
     def calculate_point_to_robot_base(self, files_path, point_shiftt=(0,0)):
@@ -294,34 +304,43 @@ class HandEyeCalibration:
         image_path = files_path + "/waiting_pos/WAITING_POSE.jpg"
         image = cv2.imread(image_path)
         uimg = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
-        cam_rvec, cam_tvec = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shiftt)
-        print(f"cam_rvec: {cam_rvec}")
-        print(f"cam_tvec: {cam_tvec}")
-        obj_to_cam_mtx = self.prepare_one_mtx(cam_rvec, cam_tvec)
-        print(f"\n obj_to_cam_mtx: {obj_to_cam_mtx}")
+        obj2cam_rvec, obj2cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shiftt)
+        obj2cam_rmtx, _ = cv2.Rodrigues(obj2cam_rvec)
+        print(f"obj2cam_rvec: {obj2cam_rvec}")
+        print(f"obj2cam_rmtx: {obj2cam_rmtx}")
+        print(f"obj2cam_tvec: {obj2cam_tvec}")
 
         # Import calculated camera to TCP transformation matrix
         data = np.load(f"{files_path}/R_T_results_tsai.npz")
-        camera_tcp_mtx = data['camera_tcp_mtx']
-        print(f"\ncamera_tcp_mtx: {camera_tcp_mtx}")
+        camera2tcp_rmtx = data['camera_tcp_rmtx']
+        camera2tcp_tvec = data['camera_tcp_tvec']
+        print(f"camera2tcp_rmtx: {camera2tcp_rmtx}")
+        print(f"camera2tcp_tvec: {camera2tcp_tvec}")
+
+        # Calculate object to TCP transformation matrix
+        obj2tcp_rmtx, obj2tcp_tvec = self.combine_transformations(obj2cam_rmtx, obj2cam_tvec, camera2tcp_rmtx, camera2tcp_tvec)
+        print(f"obj2tcp_rmtx: {obj2tcp_rmtx}")
+        print(f"obj2tcp_tvec: {obj2tcp_tvec}")
 
         # Get TCP to robot base transformation matrix
         data = np.load(f"{files_path}/waiting_pos/wait_pose.npz")
         wait_pose = data['wait_pose']
-        rob_rvec, rob_tvec = self.calculate_rvec_tvec_from_robot_pose(wait_pose)
-        rob_base_mtx = self.prepare_one_mtx(rob_rvec, rob_tvec)
-        print(f"\nrob_base_mtx: {rob_base_mtx}")
-
-
-        # Calculate object to TCP transformation matrix
-        obj_to_tcp_mtx = np.dot(camera_tcp_mtx, obj_to_cam_mtx)
-        print(f"\nobj_to_tcp_mtx: {obj_to_tcp_mtx}")
+        print(f"wait pose: {wait_pose}")
+        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose_to_matrix(wait_pose)
+        print(f"tcp2base_rmtx: {tcp2base_rmtx}")
+        print(f"tcp2base_rvec: {tcp2base_rvec}")
+        print(f"tcp_to_base_tvec: {tcp2base_tvec}")
 
         # Calculate object to base transformation matrix
-        obj_to_base_mtx = np.dot(rob_base_mtx, obj_to_tcp_mtx)
-        print(f"\nobj_to_base_mtx: {obj_to_base_mtx}")
+        obj2base_rmtx, obj2base_tvec = self.combine_transformations(obj2tcp_rmtx, obj2tcp_tvec, tcp2base_rmtx, tcp2base_tvec)
+        print(f"obj2base_rmtx: {obj2base_rmtx}")
+        print(f"obj2base_tvec: {obj2base_tvec}")
+        obj2base_rvec, _ = cv2.Rodrigues(obj2base_rmtx)
+        print(f"obj2base_rvec: {obj2base_rvec}")
 
-        return obj_to_base_mtx
+        return self.rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
+    
+
 
 
 
