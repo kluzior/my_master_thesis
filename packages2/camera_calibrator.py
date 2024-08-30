@@ -79,19 +79,19 @@ class CameraCalibrator:
                     
                     gray = _img.copy()
                     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-                    ret, _ = cv2.findChessboardCorners(gray, (8,7), None)
+                    ret, _ = cv2.findChessboardCorners(gray, self.chess_size , None)
                     if not ret:
                         self._logger.warning(f"Photo no. {i} was skipped!")
                         continue
                     cv2.imshow("Captured frame", _img)
-                    _img_path = f"{directory_with_time}/img_{"{:03d}".format(i)}.jpg"
+                    _img_path = f"{directory_with_time}/img_{"{:04d}".format(i)}.jpg"
                     cv2.imwrite(_img_path, _img)
                     self._logger.info(f"Photo no. {i} was saved as: {_img_path}")
                     cv2.waitKey(500)
                     cv2.destroyWindow("Captured frame")
                 time.sleep(1)
         except socket.error as socketerror:
-            print("Socket error: ", socketerror)
+            self._logger.error("Socket error: ", socketerror)
         finally:
             stop_event.set()
             camera_thread.join()
