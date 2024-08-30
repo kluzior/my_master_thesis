@@ -23,10 +23,13 @@ class CameraCalibrator:
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'CameraCalibrator({self}) was initialized.')
 
-    def run(self):
-        ret, flow_files_path = self.run_get_data()
-        if ret:
-            camera_intrinsic_path= self.run_calibration(flow_files_path)
+    def run(self, from_file=None):
+        if from_file is None:
+            ret, flow_files_path = self.run_get_data()
+            if ret:
+                camera_intrinsic_path= self.run_calibration(flow_files_path)
+        else:
+            camera_intrinsic_path= self.run_calibration(from_file)
         return camera_intrinsic_path
     
     def show_camera(self, frame_event, frame_storage, stop_event):
