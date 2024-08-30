@@ -35,8 +35,8 @@ print(f"camera_intrinsic_path: {camera_intrinsic_path}")
 
 
 # hand-eye calibration
-# handeye_calibrator = HandEyeCalibration(camera_intrinsic_path, c)
-# handeye_calibrator.run()
+handeye_calibrator = HandEyeCalibration(camera_intrinsic_path, c)
+handeye_calibrator.run()
 # handeye_calibrator.run(he_files)
 
 # end communication
