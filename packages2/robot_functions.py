@@ -6,13 +6,11 @@ class RobotFunctions():
     def __init__(self, client):
         self.client = client
 
-
     def give_pose(self):
         self.client.send(CmdGenerator.basic("give_pose"))
         msg = self.client.recv(1024)
         pose = self.concat_tcp_pose(msg)
         return pose
-
 
     def set_gripper(self):
         self.client.send(CmdGenerator.basic("set_gripper"))
@@ -34,11 +32,9 @@ class RobotFunctions():
             print(f'reset_gripper | wrong message : {msg}')
             return 1
 
-
     def moveL_onlyZ(self, z_trans):
         robot_pose = self.give_pose()
         print(f'robot_pose :{robot_pose}')
-
         self.client.send(CmdGenerator.basic("MoveL"))
         msg = self.client.recv(1024)
         if msg == b"MoveL_wait_pos":
@@ -56,7 +52,6 @@ class RobotFunctions():
             return 1
 
     def moveJ(self, pose):
-
         self.client.send(CmdGenerator.basic("MoveJ"))
         msg = self.client.recv(1024)
         if msg == b"MoveJ_wait_pos":
@@ -68,17 +63,25 @@ class RobotFunctions():
             else:
                 print(f'moveJ done | wrong message : {msg}')
             return 1        
-
         else:
             print(f'moveJ | wrong message : {msg}')
             return 1            
 
-
-
-
-
-
-
+    def moveJ_pose(self, pose):
+        self.client.send(CmdGenerator.basic("MoveJ_pose"))
+        msg = self.client.recv(1024)
+        if msg == b"MoveJ_pose_wait_pos":
+            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame2(pose)}')
+            self.client.send(CmdGenerator.pose_convert_to_tcp_frame2(pose))
+            msg = self.client.recv(1024)
+            if msg == b"MoveJ_pose_done":
+                return 0
+            else:
+                print(f'moveJ_pose done | wrong message : {msg}')
+            return 1        
+        else:
+            print(f'moveJ_pose | wrong message : {msg}')
+            return 1                 
 
     def concat_tcp_pose(self, received_data):
         received_data = received_data.decode('utf-8')
