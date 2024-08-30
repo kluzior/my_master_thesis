@@ -26,9 +26,9 @@ class CameraCalibrator:
         self.square_size_mm = 40
         self.square_size_m = self.square_size_mm / 1000
 
-    def show_camera(self, frame_event, frame_storage):
+    def show_camera(self, frame_event, frame_storage, stop_event):
         cap = cv2.VideoCapture(1)
-        while True:
+        while not stop_event.is_set():
             ret, frame = cap.read()
             if not ret:
                 break
@@ -44,10 +44,11 @@ class CameraCalibrator:
 
     def run_get_data(self):
         frame_event = threading.Event()
+        stop_event = threading.Event()
         frame_storage = {}
         robot_poses = RobotPositions()
         # Create a new thread for the camera function
-        camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage))
+        camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage, stop_event))
         camera_thread.start()
 
         # HOST = "192.168.0.1"
@@ -127,9 +128,9 @@ class CameraCalibrator:
 
         except socket.error as socketerror:
             print("Socket error: ", socketerror)
-        # finally:
-        #     stop_event.set()  # Signal the camera thread to stop
-        #     camera_thread.join()  # Wait for the camera thread to finish
+        finally:
+            stop_event.set()  # Signal the camera thread to stop
+            camera_thread.join()  # Wait for the camera thread to finish
 
 
 
@@ -222,3 +223,11 @@ class CameraCalibrator:
             mean_error += error 
         error_value = mean_error/len(objpoints)
         print(f'total reprojection error: {error_value}')
+
+
+    def run(self):
+        ret, flow_files_path = self.run_get_data()
+        if ret:
+            print("ret is true")
+            self.run_calibration(flow_files_path)
+        return flow_files_path
