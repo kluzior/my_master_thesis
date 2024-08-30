@@ -1,18 +1,14 @@
-import time
-from packages2.cmd_generator import CmdGenerator
 from packages2.robot_positions import RobotPositions
 from packages2.robot_functions import RobotFunctions
-from packages2.image_processor import ImageProcessor
+import time
 import socket
 import cv2
 import threading
 import numpy as np
-import packages2.common as common
 import datetime
-from pathlib import Path
 import os
-from scipy.spatial.transform import Rotation as R
-
+import logging
+from pathlib import Path
 
 class CameraCalibrator:
     def __init__(self, c=None):
@@ -24,6 +20,15 @@ class CameraCalibrator:
         self.square_size_mm = 40
         self.square_size_m = self.square_size_mm / 1000
 
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'CameraCalibrator({self}) was initialized.')
+
+    def run(self):
+        ret, flow_files_path = self.run_get_data()
+        if ret:
+            camera_intrinsic_path= self.run_calibration(flow_files_path)
+        return camera_intrinsic_path
+    
     def show_camera(self, frame_event, frame_storage, stop_event):
         cap = cv2.VideoCapture(1)
         while not stop_event.is_set():
@@ -36,7 +41,6 @@ class CameraCalibrator:
                 frame_event.clear()
             if cv2.waitKey(1) == ord('q'):
                 break
-
         cap.release()
         cv2.destroyAllWindows()
 
@@ -44,89 +48,58 @@ class CameraCalibrator:
         frame_event = threading.Event()
         stop_event = threading.Event()
         frame_storage = {}
-        robot_poses = RobotPositions()
-
         camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage, stop_event))
         camera_thread.start()
 
         robot_functions = RobotFunctions(self.c)
+        robot_poses = RobotPositions()
 
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
 
             folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
-            waiting_pos_folder = folder_with_time + "/waiting_pos"
             directory_with_time = Path("data/results/for_camera_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)
-
-            directory_waiting = Path("data/results/for_camera_calib/"+waiting_pos_folder)
-            directory_waiting.mkdir(parents=True, exist_ok=True)
-            i = 0
-
-            frame_event.set()  # Signal camera thread to capture frame
             
-            # Wait for the frame to be stored
-            while frame_event.is_set():
-                time.sleep(0.1)  # Wait a bit before checking again
-
-            # Now the frame should be available in frame_storage['frame']
-            if 'frame' in frame_storage:
-                _img = frame_storage['frame']
-                img_name = f"{directory_waiting}/WAITING_POSE.jpg"
-                cv2.imwrite(img_name, _img)
-
+            i = 0
             for pose in robot_poses.camera_calib_poses:
                 robot_functions.moveJ(pose)
 
-                frame_event.set()  # Signal camera thread to capture frame
+                frame_event.set()  # signal camera thread to capture frame
                 
-                # Wait for the frame to be stored
                 while frame_event.is_set():
                     time.sleep(0.1)  # Wait a bit before checking again
 
-                # Now the frame should be available in frame_storage['frame']
                 if 'frame' in frame_storage:
                     i+=1
-                    test_img = frame_storage['frame']
-                        
-                    gray = test_img.copy()
+                    _img = frame_storage['frame']
+                    
+                    gray = _img.copy()
                     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-                    ret, corners = cv2.findChessboardCorners(gray, (8,7), None)
+                    ret, _ = cv2.findChessboardCorners(gray, (8,7), None)
                     if not ret:
-                        print("****** PHOTO SKIPPED ******")
+                        self._logger.warning(f"Photo no. {i} was skipped!")
                         continue
-                    cv2.imshow("Requested Frame", test_img)
-
-                    img_name = f"{directory_with_time}/img_{"{:03d}".format(i)}.jpg"
-                    cv2.imwrite(img_name, test_img)
-                    print(f"Saved {img_name}")
+                    cv2.imshow("Captured frame", _img)
+                    _img_path = f"{directory_with_time}/img_{"{:03d}".format(i)}.jpg"
+                    cv2.imwrite(_img_path, _img)
+                    self._logger.info(f"Photo no. {i} was saved as: {_img_path}")
                     cv2.waitKey(500)
-                    cv2.destroyWindow("Requested Frame")
-                else:
-                    print("Frame was not captured")
+                    cv2.destroyWindow("Captured frame")
                 time.sleep(1)
-
-
-
         except socket.error as socketerror:
             print("Socket error: ", socketerror)
         finally:
-            stop_event.set()  # Signal the camera thread to stop
-            camera_thread.join()  # Wait for the camera thread to finish
-            print("DONE")
+            stop_event.set()
+            camera_thread.join()
+            self._logger.info("Procedure of taking pictures for camera calibration completed.")
             return True, directory_with_time
 
-
-
-# CALIBRATION
     def get_images(self, path=''):
         images = []
-        # Sprawdź, czy ścieżka jest poprawna
         if not os.path.exists(path):
-            print(f"The provided path does not exist: {path}")
+            self._logger.warning(f"The provided path does not exist: {path}")
             return
-
-        # Przeglądaj pliki w folderze
         for filename in os.listdir(path):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                 img_path = os.path.join(path, filename)
@@ -134,81 +107,51 @@ class CameraCalibrator:
                 if img is not None:
                     images.append(img)
                 else:
-                    print(f"Failed to load image: {img_path}")
-        print(f"Loaded {len(images)} images from {path}")
+                    self._logger.error(f"Failed to load image: {img_path}")
+        self._logger.info(f"Loaded {len(images)} images from {path}")
         return images    
     
-    def run_calibration(self, input_path):
+    def run_calibration(self, files_path):
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, self.max_iter, self.min_accuracy)
 
         objp = np.zeros((self.chess_size[0] * self.chess_size[1], 3), np.float32)
         objp[:,:2] = np.mgrid[0:self.chess_size[0],0:self.chess_size[1]].T.reshape(-1,2)
         objp = objp * self.square_size_m
 
-
-
-        np.set_printoptions(precision=6, suppress=True)
-
-        #DATA TAKEN FROM HERE
-        files_path = input_path
-
-
-        # Load from npz file
         images = self.get_images(files_path)
 
         objpoints = [] 
         imgpoints = [] 
         num = 0
-
         for image in images:
-            image_to_show = image.copy()
-            # cv2.imshow("Image", image)
-
-            gray = cv2.cvtColor(image_to_show, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             ret, corners = cv2.findChessboardCorners(gray, self.chess_size, None)
             if ret == True:
                 objpoints.append(objp) 
                 corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
                 imgpoints.append(corners2) 
-                # cv2.drawChessboardCorners(img, self.chess_size, corners2, ret)             
-                # self.save_image(write_path, num, img)   
-                # logging.debug(f'photo {num} analyzed!')
+                self._logger.debug(f'photo {num} analyzed!')
                 num += 1 
-            # cv2.drawChessboardCorners(image_to_show, (8, 7), corners, True)
-
-            # cv2.imshow("Image with corners", image_to_show)
-
         ret, self.camera_matrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
+        
+        if ret:
+            self._logger.info('Camera successfully calibrated!')
+            self._logger.info(f'Calculated camera matrix: \n{self.camera_matrix}')
+            self._logger.info(f"Calculated distortion parameters: \n{self.distortion_params}")
 
+        camera_intrinsic_path = f"{files_path}/CameraParams.npz"
+        np.savez(camera_intrinsic_path, cameraMatrix=self.camera_matrix, 
+                                        dist=self.distortion_params, 
+                                        rvecs=rvecs, 
+                                        tvecs=tvecs)
+        self._logger.info(f'Intrinsic camera parameters stored under path: {camera_intrinsic_path}')
 
-
-            # cv2.waitKey(500)
-            # cv2.destroyAllWindows()
-
-        # Zapis wyników kalibracji do pliku
-        np.savez(f"{files_path}/CameraParams.npz", 
-                cameraMatrix=self.camera_matrix, 
-                dist=self.distortion_params, 
-                rvecs=rvecs, 
-                tvecs=tvecs)
-
-        print('Camera Calibrated!')
-        print(f'Calculated camera matrix: {self.camera_matrix}')
-        print(f"Calculated distortion parameters: {self.distortion_params}")
-
-        # calculate reprojection error
         mean_error = 0 
         for i in range(len(objpoints)):
             imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], self.camera_matrix, self.distortion_params)
             error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
             mean_error += error 
         error_value = mean_error/len(objpoints)
-        print(f'total reprojection error: {error_value}')
+        self._logger.info(f'Calculated total reprojection error: \n{error_value}')
 
-
-    def run(self):
-        ret, flow_files_path = self.run_get_data()
-        if ret:
-            print("ret is true")
-            self.run_calibration(flow_files_path)
-        return f"{flow_files_path}/CameraParams.npz"
+        return camera_intrinsic_path
