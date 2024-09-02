@@ -163,8 +163,12 @@ cython_debug/
 *.png
 *.jpg
 *.npz
-test_opencv_algoritms/
+*.pkl
+*.xlsx
 test_functions/
 
 # neural network models
 *.joblib
+
+# my folders
+data/
