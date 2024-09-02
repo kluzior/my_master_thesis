@@ -1,5 +1,6 @@
 from packages2.robot_positions import RobotPositions
 from packages2.robot_functions import RobotFunctions
+from packages2.common import show_camera
 import time
 import socket
 import cv2
@@ -32,26 +33,12 @@ class CameraCalibrator:
             camera_intrinsic_path= self.run_calibration(from_file)
         return camera_intrinsic_path
     
-    def show_camera(self, frame_event, frame_storage, stop_event):
-        cap = cv2.VideoCapture(1)
-        while not stop_event.is_set():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            cv2.imshow("Live camera view", frame)
-            if frame_event.is_set():
-                frame_storage['frame'] = frame
-                frame_event.clear()
-            if cv2.waitKey(1) == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
 
     def run_get_data(self):
         frame_event = threading.Event()
         stop_event = threading.Event()
         frame_storage = {}
-        camera_thread = threading.Thread(target=self.show_camera, args=(frame_event, frame_storage, stop_event))
+        camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event))
         camera_thread.start()
 
         robot_functions = RobotFunctions(self.c)

@@ -3,7 +3,7 @@ from packages2.robot_positions import RobotPositions
 from packages2.image_processor import ImageProcessor
 from packages2.plane_determination import PlaneDeterminator
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
-
+from packages2.common import show_camera
 
 import cv2
 import threading
@@ -26,28 +26,8 @@ class LoopStateMachine:
         self.frame_event = threading.Event()
         self.stop_event = threading.Event()
         self.frame_storage = {}
-        self.camera_thread = threading.Thread(target=self.show_camera, args=(self.frame_event, self.frame_storage, self.stop_event))
+        self.camera_thread = threading.Thread(target=show_camera, args=(self.frame_event, self.frame_storage, self.stop_event))
         self.camera_thread.start()
-
-
-
-    def show_camera(self, frame_event, frame_storage, stop_event):
-        cap = cv2.VideoCapture(1)
-        while not stop_event.is_set():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            cv2.imshow("Live camera view", frame)
-            if frame_event.is_set():
-                frame_storage['frame'] = frame
-                frame_event.clear()
-            if cv2.waitKey(1) == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
-
-
-
 
     def run(self):
         while True:
