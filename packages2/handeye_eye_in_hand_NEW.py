@@ -28,9 +28,10 @@ class HandEyeCalibration:
         if from_file is None:
             ret, flow_files_path = self.run_get_data()
             if ret:
-                self.run_calibration(flow_files_path)
+                results_path = self.run_calibration(flow_files_path)
         else:
-            self.run_calibration(from_file)
+            results_path = self.run_calibration(from_file)
+        return results_path
 
     def show_camera(self, frame_event, frame_storage, stop_event):
         cap = cv2.VideoCapture(1)
@@ -198,6 +199,7 @@ class HandEyeCalibration:
         np.savez(f"{files_path}/R_T_results_horaud.npz", camera_tcp_rmtx = R3, camera_tcp_tvec = T3)
         np.savez(f"{files_path}/R_T_results_daniilidis.npz", camera_tcp_rmtx = R4, camera_tcp_tvec = T4)
         self._logger.info(f"Results of hand-eye calibration from all methods saved to .npz file")
+        return files_path
 
     def pose2rvec_tvec(self, pose):
         tvec = np.array(pose[:3])
@@ -264,7 +266,7 @@ class HandEyeCalibration:
 
         for point_shift in test_chess_points:
             # calculate pose
-            target_pose = self.generate_test_pose(files_path, point_shift, handeye_type)
+            target_pose = self.generate_test_pose(str(files_path), point_shift, handeye_type)
             self._logger.info(f"calculated pose: {target_pose}")
 
             # send robot to poses
