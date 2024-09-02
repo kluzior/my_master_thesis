@@ -2,7 +2,7 @@ import time
 from packages2.robot_positions import RobotPositions
 from packages2.robot_functions import RobotFunctions
 from packages2.image_processor import ImageProcessor
-from packages2.common import show_camera
+from packages2.common import show_camera, pose2rvec_tvec, rvec_tvec2pose
 import socket
 import cv2
 import threading
@@ -187,17 +187,17 @@ class HandEyeCalibration:
         self._logger.info(f"Results of hand-eye calibration from all methods saved to .npz file")
         return files_path
 
-    def pose2rvec_tvec(self, pose):
-        tvec = np.array(pose[:3])
-        rvec = np.array(pose[3:])
-        rotation_matrix, _ = cv2.Rodrigues(rvec)
-        return rotation_matrix, rvec, tvec.reshape(-1, 1)
+    # def pose2rvec_tvec(self, pose):
+    #     tvec = np.array(pose[:3])
+    #     rvec = np.array(pose[3:])
+    #     rotation_matrix, _ = cv2.Rodrigues(rvec)
+    #     return rotation_matrix, rvec, tvec.reshape(-1, 1)
 
-    def rvec_tvec2pose(self, rvec, tvec):
-        x, y, z = tvec.flatten()
-        Rx, Ry, Rz = rvec.flatten()
-        pose = np.array([x, y, z, Rx, Ry, Rz])
-        return pose
+    # def rvec_tvec2pose(self, rvec, tvec):
+    #     x, y, z = tvec.flatten()
+    #     Rx, Ry, Rz = rvec.flatten()
+    #     pose = np.array([x, y, z, Rx, Ry, Rz])
+    #     return pose
 
     def combine_transformations(self, R1, t1, R2, t2):
         R_combined = np.dot(R2, R1)
@@ -229,7 +229,7 @@ class HandEyeCalibration:
         # Get TCP to robot base transformation matrix
         data = np.load(f"{handeye_path}/waiting_pos/wait_pose.npz")
         wait_pose = data['wait_pose']
-        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = self.pose2rvec_tvec(wait_pose)
+        tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = pose2rvec_tvec(wait_pose)
 
         # Calculate object to TCP transformation matrix
         obj2tcp_rmtx, obj2tcp_tvec = self.combine_transformations(obj2cam_rmtx, obj2cam_tvec, camera2tcp_rmtx, camera2tcp_tvec)
@@ -238,7 +238,7 @@ class HandEyeCalibration:
         obj2base_rmtx, obj2base_tvec = self.combine_transformations(obj2tcp_rmtx, obj2tcp_tvec, tcp2base_rmtx, tcp2base_tvec)
         
         obj2base_rvec, _ = cv2.Rodrigues(obj2base_rmtx)
-        final_pose = self.rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
+        final_pose = rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
         return final_pose
 
     def generate_test_pose(self, files_path, point_shift=(0,0), handeye_type='tsai'):

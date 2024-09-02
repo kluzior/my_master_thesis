@@ -19,3 +19,15 @@ def show_camera(frame_event, frame_storage, stop_event):
             break
     cap.release()
     cv2.destroyAllWindows()
+
+def pose2rvec_tvec(pose):
+    tvec = np.array(pose[:3])
+    rvec = np.array(pose[3:])
+    rotation_matrix, _ = cv2.Rodrigues(rvec)
+    return rotation_matrix, rvec, tvec.reshape(-1, 1)
+
+def rvec_tvec2pose(rvec, tvec):
+    x, y, z = tvec.flatten()
+    Rx, Ry, Rz = rvec.flatten()
+    pose = np.array([x, y, z, Rx, Ry, Rz])
+    return pose

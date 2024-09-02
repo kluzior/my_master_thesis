@@ -160,7 +160,6 @@ class ImageProcessor:
                 return roi_array
             else:
                 print("ROI selection cancelled. Trying again...")
-                cv2.destroyWindow("ROI")
                 cv2.destroyWindow('image')
 
     def find_centroid(self, contour):

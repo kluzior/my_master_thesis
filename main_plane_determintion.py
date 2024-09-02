@@ -4,7 +4,7 @@ from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 import cv2
 from packages2.start_communication import start_communication
 from packages2.robot_functions import RobotFunctions
-
+from packages2.common import rvec_tvec2pose
 camera_params_path = "data/results/for_camera_calib/images_28-08_10-27/CameraParams.npz"
 
 c, s = start_communication()
@@ -44,7 +44,7 @@ intersection_point = pd.pixel_to_camera_plane(pixel_tuple)
 
 print(f"Współrzędne 3D punktu przecięcia dla piksela {pixel_tuple}: {intersection_point}")
 
-pose = pd.rvec_tvec2pose(rvec, intersection_point)
+pose = rvec_tvec2pose(rvec, intersection_point)
 print(f"pose: {pose}")
 
 rmtx, _ = cv2.Rodrigues(rvec)
@@ -53,34 +53,3 @@ target_pose = he.calculate_point_pose2robot_base(rmtx, intersection_point.reshap
 
 robot_functions.moveJ_pose(target_pose)
 
-# _, _, pixel = ip.calculate_rvec_tvec(uframe, point_shift=(0,1))
-# pixel_tuple = tuple(pixel[0])
-
-# print(f"pixel {pixel}")
-# print(f"pixel_tuple {pixel_tuple}")
-# intersection_point = pd.pixel_to_plane(pixel_tuple, normal_vector, point_on_plane)
-
-# print(f"Współrzędne 3D punktu przecięcia dla piksela {pixel_tuple}: {intersection_point}")
-
-
-
-# _, _, pixel = ip.calculate_rvec_tvec(uframe, point_shift=(1,0))
-# pixel_tuple = tuple(pixel[0])
-
-# print(f"pixel {pixel}")
-# print(f"pixel_tuple {pixel_tuple}")
-# intersection_point = pd.pixel_to_plane(pixel_tuple, normal_vector, point_on_plane)
-
-# print(f"Współrzędne 3D punktu przecięcia dla piksela {pixel_tuple}: {intersection_point}")
-
-
-
-
-# _, _, pixel = ip.calculate_rvec_tvec(uframe, point_shift=(1,1))
-# pixel_tuple = tuple(pixel[0])
-
-# print(f"pixel {pixel}")
-# print(f"pixel_tuple {pixel_tuple}")
-# intersection_point = pd.pixel_to_plane(pixel_tuple, normal_vector, point_on_plane)
-
-# print(f"Współrzędne 3D punktu przecięcia dla piksela {pixel_tuple}: {intersection_point}")

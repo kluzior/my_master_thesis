@@ -62,10 +62,3 @@ class PlaneDeterminator:
         target_pose = self.he.calculate_point_pose2robot_base(self.rmtx, pose.reshape(-1, 1), self.handeye_path)
 
         return target_pose
-
-
-    def rvec_tvec2pose(self, rvec, tvec):
-        x, y, z = tvec.flatten()
-        Rx, Ry, Rz = rvec.flatten()
-        pose = np.array([x, y, z, Rx, Ry, Rz])
-        return pose
