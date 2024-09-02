@@ -1,6 +1,6 @@
 from packages2.camera_calibrator import CameraCalibrator
 from packages2.robot_functions import RobotFunctions
-from packages2.start_communication import start_communication
+from packages2.common import start_communication
 
 import numpy as np
 import cv2

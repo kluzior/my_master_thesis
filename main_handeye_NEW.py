@@ -6,7 +6,7 @@ import cv2
 import socket 
 import math
 import time
-from packages2.start_communication import start_communication
+from packages2.common import start_communication
 
 def convert_pose(data):
     if len(data) != 6:

@@ -3,7 +3,26 @@ import numpy as np
 from numpy.linalg import inv, svd, norm, pinv
 from scipy.spatial.transform import Rotation as Rot
 import cv2
+import socket
 
+def start_communication(host = "192.168.0.1",   port = 10000):
+    print("Start listening...")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((host, port))
+    s.listen(5)
+    c, addr = s.accept()
+    if c is not None:
+        print("client connected!")
+    try:
+        msg = c.recv(1024)
+        print(msg)
+        if msg == b"Hello server, robot here":
+            print("Robot requested for data!")
+            print("its correct client, connection established")
+    except:
+        pass
+    return c, s
 
 def show_camera(frame_event, frame_storage, stop_event):
     cap = cv2.VideoCapture(1)

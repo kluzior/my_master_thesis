@@ -4,7 +4,7 @@ MAIN PROGRAM TO CONTROL UR COBOT WITH VISUAL SYSTEM
 program działa z 2024_08_30_SK_comm
 """
 
-from packages2.start_communication import start_communication
+from packages2.common import start_communication
 from packages2.robot_functions import RobotFunctions
 from packages2.camera_calibrator import CameraCalibrator
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration

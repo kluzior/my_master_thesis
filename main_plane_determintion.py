@@ -2,25 +2,13 @@ from packages2.plane_determination import PlaneDeterminator
 from packages2.image_processor import ImageProcessor
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 import cv2
-from packages2.start_communication import start_communication
+from packages2.common import start_communication, rvec_tvec2pose
 from packages2.robot_functions import RobotFunctions
-from packages2.common import rvec_tvec2pose
+
 camera_params_path = "data/results/for_camera_calib/images_28-08_10-27/CameraParams.npz"
 
 c, s = start_communication()
 robot_functions = RobotFunctions(c)
-
-
-# pd = PlaneDeterminator(camera_params_path)
-# ip = ImageProcessor(camera_params_path)
-
-# frame = cv2.imread("z_captured_image.jpg")
-# tvecs_list, pixels2D_list = pd.get_plane_points(uframe)
-# plane = pd.determine_plane(tvecs_list)
-
-# pixel = (100, 150)  # Example pixel coordinates
-# point_3d = pd.pixel_to_plane(pixel, plane)
-# print(f"3D point on the plane: {point_3d}")
 
 # Przygotowanie danych
 camera_params_path = "data/results/for_camera_calib/images_28-08_10-27/CameraParams.npz"
