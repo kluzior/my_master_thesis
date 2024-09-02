@@ -268,6 +268,6 @@ class HandEyeCalibration:
             self._logger.info(f"calculated pose: {target_pose}")
 
             # send robot to poses
-            # self.robot_functions.moveJ_pose(target_pose)
+            self.robot_functions.moveJ_pose(target_pose)
 
 

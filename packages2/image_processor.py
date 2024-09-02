@@ -4,10 +4,12 @@ import logging
 
 
 class ImageProcessor:
-    def __init__(self):
+    def __init__(self, camera_params_path = None):
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'ImageProcessor({self}) was initialized.')
+
+        self.camera_params_path = camera_params_path
 
     def load_camera_params(self, path):
         with np.load(path) as file:
@@ -72,7 +74,7 @@ class ImageProcessor:
         Calculates the chessboard's rotation (rvecs) and translation vector (tvecs) using the solvePnP method.
 
         Args:
-            frame: The input frame
+            frame: The input frame, must be undistorted!
             point_shift: A tuple representing the shift of the chessboard corners in the x and y directions
             chess_size: A tuple representing the number of inner corners per chessboard row and column
             side_of_chess_mm: The size of each square on the chessboard in millimeters
@@ -81,19 +83,24 @@ class ImageProcessor:
             rvecs: The rotation vector
             tvecs: The translation vector
         """
-        mtx, distortion = self.load_camera_params('CameraParams.npz')
+        mtx, _ = self.load_camera_params(self.camera_params_path)
         # prepare chessboard corners in real world 
         objp = np.zeros((chess_size[0] * chess_size[1], 3), np.float32)
         objp[:,:2] = np.mgrid[0:chess_size[0],0:chess_size[1]].T.reshape(-1,2)
         objp[:, 0] -= point_shift[0]
         objp[:, 1] -= point_shift[1]
-        objp *= side_of_chess_mm
-
+        side_of_chess_m = side_of_chess_mm / 1000
+        objp *= side_of_chess_m
+        
+        index = np.where((objp == [0.0, 0.0, 0.0]).all(axis=1))[0]
+        assert index.size == 1, "Index should have only one position"
+        idx = index[0]
+        
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, chess_size, None)
         if ret == True:
-            _, rvecs, tvecs = cv2.solvePnP(objp, corners, mtx, distortion)
-        return rvecs, tvecs
+            _, rvecs, tvecs = cv2.solvePnP(objp, corners, mtx, None)    # None dist_param because image is already undistorted!
+        return rvecs, tvecs, corners[idx]
 
     def show_chess_corner(self, frame, chess_size=(8,7), point=(0,0)):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

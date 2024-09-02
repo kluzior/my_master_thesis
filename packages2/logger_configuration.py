@@ -12,7 +12,7 @@ def configure_logger(path='debug' ):
 
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    CONSOLE_LOG_FORMAT = '[%(levelname)-8s] [%(module)-15s] %(message)s'
+    CONSOLE_LOG_FORMAT = '[%(levelname)-4s]%(message)s'
     console_formatter = logging.Formatter(CONSOLE_LOG_FORMAT)
     console_handler.setFormatter(console_formatter)
     main_logger.addHandler(console_handler)
