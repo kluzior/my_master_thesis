@@ -10,6 +10,7 @@ from packages2.camera_calibrator import CameraCalibrator
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 from packages2.plane_determination import PlaneDeterminator
 from packages2.logger_configuration import configure_logger
+from packages2.loop_state_machine import LoopStateMachine
 
 OFFLINE_SIMULATION_ONLY = False
 COLLECT_CAMERA_CALIB_DATA = False
@@ -55,14 +56,18 @@ else:
     pass
 
 # plane determination
-pd = PlaneDeterminator(camera_intrinsic_path, handeye_path)
+# pd = PlaneDeterminator(camera_intrinsic_path, handeye_path)
 
-test_pose = pd.test_run()
-print(f"test_pose: {test_pose}")
+# test_pose = pd.test_run()
+# print(f"test_pose: {test_pose}")
+# robot_functions.moveJ_pose(test_pose)
 
 
-robot_functions.moveJ_pose(test_pose)
 
+# LOOP
+loop = LoopStateMachine(c, camera_intrinsic_path)
+
+loop.run()
 
 
 

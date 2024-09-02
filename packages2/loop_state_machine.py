@@ -1,5 +1,6 @@
 from packages2.robot_functions import RobotFunctions
 from packages2.robot_positions import RobotPositions
+from packages2.image_processor import ImageProcessor
 
 
 import cv2
@@ -8,9 +9,13 @@ import time
 
 
 class LoopStateMachine:
-    def __init__(self, c):
+    def __init__(self, c, camera_intrinsic_path):
         self.state = 'Initialization'
+        self.ip = ImageProcessor(camera_intrinsic_path)
+        self.camera_mtx, self.dist_params = self.ip.load_camera_params(camera_intrinsic_path)
         self.rf = RobotFunctions(c)
+
+
         self.frame_event = threading.Event()
         self.stop_event = threading.Event()
         self.frame_storage = {}
@@ -41,6 +46,8 @@ class LoopStateMachine:
         while True:
             if self.state == 'Initialization':
                 self.initialization()
+            elif self.state == 'GoToWaitPosition_init':
+                self.go_to_wait_position_init()
             elif self.state == 'GoToWaitPosition':
                 self.go_to_wait_position()
             elif self.state == 'IdentificationContours':
@@ -58,32 +65,49 @@ class LoopStateMachine:
     def initialization(self):
         print("Initializing robot...")
         # Initialization logic here
-        self.state = 'GoToWaitPosition'
+        self.state = 'GoToWaitPosition_init'
+
+    def go_to_wait_position_init(self):
+        print("Going to wait position...")
+        ret = self.rf.moveJ(RobotPositions.look_at_chessboard)
+
+        self.frame_event.set()  # signal camera thread to capture frame
+        while self.frame_event.is_set():
+            time.sleep(0.1)  # wait a bit before checking again
+        if 'frame' in self.frame_storage:
+            _img = self.frame_storage['frame']
+            self.table_roi_points = self.ip.get_roi_points(_img)
+
+
+        if self.table_roi_points is not None:
+            self.state = 'GoToWaitPosition'
 
     def go_to_wait_position(self):
         print("Going to wait position...")
-        # Logic to move robot to wait position
-        # Simulate reaching wait position
         ret = self.rf.moveJ(RobotPositions.look_at_chessboard)
-
-        # wait_position_reached = True
         if ret == 0:
             self.state = 'IdentificationContours'
 
     def identification_contours(self):
         print("Identifying contours...")
-
         self.frame_event.set()  # signal camera thread to capture frame
         while self.frame_event.is_set():
             time.sleep(0.1)  # wait a bit before checking again
-
         if 'frame' in self.frame_storage:    
             _img = self.frame_storage['frame']
 
             cv2.imshow("captured picure", _img)
             cv2.waitKey(1000)
-            cv2.destroyWindow("captured picure")    
+            cv2.destroyWindow("captured picure")   
 
+            uimg = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
+            gray = cv2.cvtColor(uimg, cv2.COLOR_BGR2GRAY)
+            buimg = self.ip.apply_binarization(gray)
+            final_img, _ = self.ip.ignore_background(buimg, self.table_roi_points)
+            
+            cv2.imshow("prepared picure", final_img)
+            cv2.waitKey(1000)
+            cv2.destroyWindow("prepared picure")   
 
 
 
