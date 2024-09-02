@@ -187,18 +187,6 @@ class HandEyeCalibration:
         self._logger.info(f"Results of hand-eye calibration from all methods saved to .npz file")
         return files_path
 
-    # def pose2rvec_tvec(self, pose):
-    #     tvec = np.array(pose[:3])
-    #     rvec = np.array(pose[3:])
-    #     rotation_matrix, _ = cv2.Rodrigues(rvec)
-    #     return rotation_matrix, rvec, tvec.reshape(-1, 1)
-
-    # def rvec_tvec2pose(self, rvec, tvec):
-    #     x, y, z = tvec.flatten()
-    #     Rx, Ry, Rz = rvec.flatten()
-    #     pose = np.array([x, y, z, Rx, Ry, Rz])
-    #     return pose
-
     def combine_transformations(self, R1, t1, R2, t2):
         R_combined = np.dot(R2, R1)
         t_combined = np.dot(R2, t1) + t2
