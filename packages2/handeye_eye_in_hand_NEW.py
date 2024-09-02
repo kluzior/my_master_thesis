@@ -271,5 +271,6 @@ class HandEyeCalibration:
 
             # send robot to poses
             self.robot_functions.moveJ_pose(target_pose)
+            time.sleep(1)
 
 
