@@ -1,6 +1,8 @@
 from packages2.robot_functions import RobotFunctions
 from packages2.robot_positions import RobotPositions
 from packages2.image_processor import ImageProcessor
+from packages2.plane_determination import PlaneDeterminator
+from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 
 
 import cv2
@@ -9,11 +11,16 @@ import time
 
 
 class LoopStateMachine:
-    def __init__(self, c, camera_intrinsic_path):
+    def __init__(self, c, camera_intrinsic_path, handeye_path):
         self.state = 'Initialization'
         self.ip = ImageProcessor(camera_intrinsic_path)
         self.camera_mtx, self.dist_params = self.ip.load_camera_params(camera_intrinsic_path)
         self.rf = RobotFunctions(c)
+        self.handeye_path = handeye_path
+        self.he = HandEyeCalibration(camera_intrinsic_path, c)
+
+
+        self.pd = PlaneDeterminator(camera_intrinsic_path, handeye_path)
 
 
         self.frame_event = threading.Event()
@@ -76,8 +83,8 @@ class LoopStateMachine:
             time.sleep(0.1)  # wait a bit before checking again
         if 'frame' in self.frame_storage:
             _img = self.frame_storage['frame']
-            self.table_roi_points = self.ip.get_roi_points(_img)
-
+            uimg = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
+            self.table_roi_points = self.ip.get_roi_points(uimg)
 
         if self.table_roi_points is not None:
             self.state = 'GoToWaitPosition'
@@ -86,6 +93,7 @@ class LoopStateMachine:
         print("Going to wait position...")
         ret = self.rf.moveJ(RobotPositions.look_at_chessboard)
         if ret == 0:
+            time.sleep(1)
             self.state = 'IdentificationContours'
 
     def identification_contours(self):
@@ -94,6 +102,7 @@ class LoopStateMachine:
         while self.frame_event.is_set():
             time.sleep(0.1)  # wait a bit before checking again
         if 'frame' in self.frame_storage:    
+            self.target_pixel = [0, 0] 
             _img = self.frame_storage['frame']
 
             cv2.imshow("captured picure", _img)
@@ -110,6 +119,13 @@ class LoopStateMachine:
             cv2.destroyWindow("prepared picure")   
 
 
+            contours, _ = cv2.findContours(final_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
+            M = cv2.moments(contours[0])
+            self.target_pixel[0] = int(M['m10'] / M['m00'])
+            self.target_pixel[1] = int(M['m01'] / M['m00'])
+            print(f"cx: {self.target_pixel[0]}, cy: {self.target_pixel[1]}")
+
 
         # Logic for identifying contours
         # Simulate contour identification
@@ -119,9 +135,15 @@ class LoopStateMachine:
 
     def go_to_pick_up_object(self):
         print("Going to pick up object...")
+
+        pose = self.pd.pixel_to_camera_plane(self.target_pixel)
+        print(f"pose: {pose}")
+        target_pose = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
+        print(f"target_pose: {target_pose}")
+
         # Logic to move robot to the contour position
         # Simulate reaching contour position
-        ret = self.rf.moveJ(RobotPositions.pose_wait_base)
+        ret = self.rf.moveJ_pose(target_pose)
 
         if ret == 0:
             self.state = 'PickUpAndMove'

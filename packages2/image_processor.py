@@ -153,13 +153,15 @@ class ImageProcessor:
 
             user_input = input("Accept ROI? (y/n): ")
             if user_input.lower() == 'y':
-                cv2.destroyAllWindows()
+                cv2.destroyWindow("ROI")
+                cv2.destroyWindow('image')
                 roi_array = np.array(roi_points)
                 print("ROI points saved as:\n", roi_array)
                 return roi_array
             else:
                 print("ROI selection cancelled. Trying again...")
-                cv2.destroyAllWindows()
+                cv2.destroyWindow("ROI")
+                cv2.destroyWindow('image')
 
     def find_centroid(self, contour):
         M = cv2.moments(contour)
