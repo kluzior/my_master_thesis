@@ -10,12 +10,13 @@ from packages2.camera_calibrator import CameraCalibrator
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
 from packages2.logger_configuration import configure_logger
 from packages2.loop_state_machine import LoopStateMachine
+import datetime
 
 OFFLINE_SIMULATION_ONLY = False
 COLLECT_CAMERA_CALIB_DATA = False
 COLLECT_HAND_EYE_CALIB_DATA = False
 
-
+timestamp = datetime.datetime.now().strftime("%d-%m_%H-%M")
 
 
 # start communication
@@ -26,7 +27,7 @@ else:
 
 # initialization
 robot_functions = RobotFunctions(c)
-configure_logger()
+configure_logger(timestamp)
 
 # camera calibration
 camera_calibrator = CameraCalibrator(c)
