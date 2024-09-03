@@ -2,7 +2,7 @@ import time
 from packages2.robot_positions import RobotPositions
 from packages2.robot_functions import RobotFunctions
 from packages2.image_processor import ImageProcessor
-from packages2.common import show_camera, pose2rvec_tvec, rvec_tvec2pose
+from packages2.common import show_camera, pose2rvec_tvec, rvec_tvec2pose, pose_list_to_dict
 import socket
 import cv2
 import threading
@@ -227,13 +227,15 @@ class HandEyeCalibration:
         
         obj2base_rvec, _ = cv2.Rodrigues(obj2base_rmtx)
         final_pose = rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
-        return final_pose
+        final_pose_dict = pose_list_to_dict(final_pose)
+        return final_pose_dict, final_pose
 
     def generate_test_pose(self, files_path, point_shift=(0,0), handeye_type='tsai'):
         chess_path = files_path + "/waiting_pos/WAITING_POSE.jpg"
         obj2cam_rmtx, obj2cam_tvec = self.determine_rvec_tvec_for_chess_point(chess_path, point_shift)
-        final_pose = self.calculate_point_pose2robot_base(obj2cam_rmtx, obj2cam_tvec, files_path, handeye_type)
-        return final_pose
+        _, final_pose = self.calculate_point_pose2robot_base(obj2cam_rmtx, obj2cam_tvec, files_path, handeye_type)
+        final_pose_dict = pose_list_to_dict(final_pose)
+        return final_pose_dict
     
     def send_robot_to_test_poses(self, files_path, handeye_type='tsai'):
         test_chess_points = [(0,0), (0,6), (7,6), (7,0), (4,3)]

@@ -50,3 +50,10 @@ def rvec_tvec2pose(rvec, tvec):
     Rx, Ry, Rz = rvec.flatten()
     pose = np.array([x, y, z, Rx, Ry, Rz])
     return pose
+
+def pose_list_to_dict(coords):
+    if len(coords) != 6:
+        raise ValueError("Input list must have exactly 6 elements.")
+    
+    keys = ["x", "y", "z", "Rx", "Ry", "Rz"]
+    return {key: value for key, value in zip(keys, coords)}

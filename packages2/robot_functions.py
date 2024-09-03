@@ -50,6 +50,23 @@ class RobotFunctions():
         else: 
             print(f'moveL | wrong message : {msg}')
             return 1
+        
+
+    def moveL_pose(self, pose):
+        self.client.send(CmdGenerator.basic("MoveL_pose"))
+        msg = self.client.recv(1024)
+        if msg == b"MoveL_pose_wait_pos":
+            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame3(pose)}')
+            self.client.send(CmdGenerator.pose_convert_to_tcp_frame3(pose))
+            msg = self.client.recv(1024)
+            if msg == b"MoveL_pose_done":
+                return 0
+            else:
+                print(f'moveL_pose done | wrong message : {msg}')
+            return 1        
+        else:
+            print(f'moveL_pose | wrong message : {msg}')
+            return 1
 
     def moveJ(self, pose):
         self.client.send(CmdGenerator.basic("MoveJ"))
@@ -71,8 +88,8 @@ class RobotFunctions():
         self.client.send(CmdGenerator.basic("MoveJ_pose"))
         msg = self.client.recv(1024)
         if msg == b"MoveJ_pose_wait_pos":
-            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame2(pose)}')
-            self.client.send(CmdGenerator.pose_convert_to_tcp_frame2(pose))
+            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame3(pose)}')
+            self.client.send(CmdGenerator.pose_convert_to_tcp_frame3(pose))
             msg = self.client.recv(1024)
             if msg == b"MoveJ_pose_done":
                 return 0
@@ -81,7 +98,7 @@ class RobotFunctions():
             return 1        
         else:
             print(f'moveJ_pose | wrong message : {msg}')
-            return 1                 
+            return 1
 
     def concat_tcp_pose(self, received_data):
         received_data = received_data.decode('utf-8')

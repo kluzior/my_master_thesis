@@ -10,6 +10,9 @@ import cv2
 import threading
 import time
 
+from packages2.robot_poses import RobotPoses
+
+
 
 class LoopStateMachine:
     def __init__(self, c, camera_intrinsic_path, handeye_path, mlp_model_path):
@@ -33,6 +36,7 @@ class LoopStateMachine:
 
         self.objects_record = []
 
+        self.bank_counters =  list(0 for _ in range(5))
 
     def run(self):
         while True:
@@ -45,11 +49,11 @@ class LoopStateMachine:
             elif self.state == 'IdentificationContours':
                 self.identification_contours()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel = self.choose_object2pick_up(3)
+                target_pixel, label = self.choose_object2pick_up(3)
             elif self.state == 'GoToPickUpObject':
-                self.go_to_pick_up_object(target_pixel)
+                self.go_to_pick_up_object(target_pixel, label)
             elif self.state == 'PickUpAndMove':
-                self.pick_up_and_move()
+                self.pick_up_and_move(label)
             elif self.state == 'ReturnToWaitPosition':
                 self.return_to_wait_position()
             else:
@@ -137,36 +141,59 @@ class LoopStateMachine:
 
     def choose_object2pick_up(self, label):
         print("Choose position according to strategy")
-
         target_pixel = self.get_best_pixel_coords(label)
         wait_position_reached = True
         if wait_position_reached:
             self.state = 'GoToPickUpObject'
-            return target_pixel
+            return target_pixel, label
 
 
 
-    def go_to_pick_up_object(self, target_pixel):
+    def go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
         print(f"pose: {pose}")
-        target_pose = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
+        target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
         print(f"target_pose: {target_pose}")
 
+        target_pose_waitpos = target_pose.copy()
+        target_pose_waitpos["z"] += 0.1
         # Logic to move robot to the contour position
         # Simulate reaching contour position
-        ret = self.rf.moveJ_pose(target_pose)
+        self.rf.moveJ_pose(target_pose_waitpos)
+        time.sleep(1)
+        ret = self.rf.moveL_pose(target_pose)
+        time.sleep(1)
+        ret = self.rf.moveL_pose(target_pose_waitpos)
+
 
         if ret == 0:
             self.state = 'PickUpAndMove'
 
-    def pick_up_and_move(self):
+    def pick_up_and_move(self, label):
         print("Picking up object and moving to position...")
-        # Logic to pick up the object and move to a new position
-        # Simulate picking up and moving
-        pick_up_and_move_done = True
-        if pick_up_and_move_done:
+        object_height = 0.008
+        bank_pose = RobotPoses.banks[label]
+
+        bank_pose["z"] += self.bank_counters[label] * object_height
+
+        bank_pose_waitpos = bank_pose.copy()
+        bank_pose_waitpos["z"] += 0.1
+
+
+        self.rf.moveJ_pose(bank_pose_waitpos)
+        time.sleep(1)
+        self.rf.moveL_pose(bank_pose)
+        time.sleep(1)
+        ret = self.rf.moveL_pose(bank_pose_waitpos)
+
+        self.bank_counters[label] += 1
+
+        print(f"BANK COUNTER TEST: {self.bank_counters[label]}")
+
+        # pick_up_and_move_done = True
+        if ret == 0:
             self.state = 'ReturnToWaitPosition'
 
     def return_to_wait_position(self):
