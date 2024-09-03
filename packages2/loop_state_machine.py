@@ -111,9 +111,7 @@ class LoopStateMachine:
             contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
         ###
 
-        ### FOR EACH CONTOURS
             for contour in contours:
-
             ### CALCULATE CENTER POINT + CHECK IF IT GRIPPABLE
                 target_pixel = [0, 0] 
                 M = cv2.moments(contour)
@@ -122,46 +120,24 @@ class LoopStateMachine:
                 print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
             ###
 
-            ### CROP CONTOUR TO IDENTIFY
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
-                cv2.imshow("cropped_image", cropped_image)
-                cv2.waitKey(2000)
-                cv2.destroyWindow("cropped_image")
-            ###
 
-            ### CLASSIFICATION 
                 contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
-                # contour_probability = contour_probability[0][contour_prediction[0] - 1]                
-                print(f" contour_prediction: {contour_prediction}")
-                print(f" contour_probability: {contour_probability}")
 
-                shape_label = self.nnc.shape_labels[contour_prediction]
-                shape_color = self.nnc.shape_colors[shape_label]
-                print(f"shape_label: {shape_label}")
-                print(f"shape_color: {shape_color}")
-
-            ###
-
-            ### APPEND EVERYTHING TO DICTIONARY(?), 
-            #       I WANT TO HAVE INFO ABOUT LABEL, PROBABILITY, CENTER/GRIPPER POINT & CONTOUR_FRAME
                 self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
-            ###
 
+        ### VISUALISE IDENTIFICATION RESULTS
+        cv2.imshow("identification results", self.nnc.visualize(uimg, self.objects_record))
+        cv2.waitKey(5000)
+        cv2.destroyWindow("identification results")
 
-        ### ON BEHALF OF ZAŁOŻENIA MAKE DECISION WHICH ONE TO PICK UP
-
-
-
-        # Logic for identifying contours
-        # Simulate contour identification
         contour_identified = True
         if contour_identified:
             self.state = 'ChooseObjectToPickUp'
 
     def choose_object2pick_up(self, label):
-        print("Returning to wait position...")
-        # Logic to move robot back to wait position
-        # Simulate reaching wait position
+        print("Choose position according to strategy")
+
         target_pixel = self.get_best_pixel_coords(label)
         wait_position_reached = True
         if wait_position_reached:

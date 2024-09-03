@@ -271,3 +271,79 @@ class NN_Classification:
         img = img.flatten().reshape(1, -1)
         prediction = model.predict(img)
         return prediction
+    
+
+class NN_Classificator:
+    shape_colors = {
+        'None': (0, 0, 0),          # Black for unknown shape
+        'Label1': (255, 0, 0),      # Blue for Label1
+        'Label2': (0, 255, 0),      # Green for Label2
+        'Label3': (0, 0, 255),      # Red for Label3
+        'Label4': (255, 255, 0),    # Cyan for Label4
+        'Label5': (255, 255, 255)   # White for Label5
+    }
+    shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
+
+    def __init__(self, model_path,):
+        self.image_processor = ImageProcessor()
+        # self.roi_points = roi_points
+        self.trained_model = joblib.load(model_path)
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'NN_Classification({self}) was initialized.')
+
+    def prepare_image(self):
+
+        pass
+
+    # def prepare_image_from_path(self, image_path):
+    #     mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
+    #     # read image
+    #     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    #     if img is None:
+    #         print(f"Failed to read {image_path}")
+    #         return
+    #     # ignore background                
+    #     # iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
+    #     # undistort
+    #     uimg = self.image_processor.undistort_frame(iimg, mtx, distortion)
+    #     # binarize
+    #     buimg = self.image_processor.apply_binarization(uimg, 'standard')
+    #     # find contour + crop
+    #     objects, coordinates, _ = self.image_processor.crop_image(buimg)
+    #     # save
+    #     return objects, coordinates, roi_contours
+
+    # def prepare_frame(self, frame):
+    #     mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
+    #     img = frame
+    #     if len(frame.shape) == 3 and frame.shape[2] == 3:
+    #         # Convert to grayscale
+    #         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     # ignore background                
+    #     iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
+    #     # binarize
+    #     buimg = self.image_processor.apply_binarization(iimg, 'standard')
+    #     # find contour + crop
+    #     objects, coordinates, _ = self.image_processor.crop_image(buimg)
+    #     # save
+    #     return buimg, objects, coordinates, roi_contours
+    
+    def predict_shape(self, img, image_size=(28, 28)):
+        img = transform.resize(img, image_size)
+        img = img.flatten().reshape(1, -1)
+        prediction = self.trained_model.predict(img)
+        probability = self.trained_model.predict_proba(img)
+        return prediction[0], probability[0][prediction[0] - 1]
+    
+    def visualize(self, image, records):
+        img_to_show = image.copy()
+        for record in records:
+            shape_label = self.shape_labels[record["label"]]
+            shape_color = self.shape_colors[shape_label]
+            x, y, w, h = record["contour_frame"]
+            cv2.rectangle(img_to_show, (x, y), (x + w, y + h), shape_color, 2)
+            prediction = str(record["prediction"])
+            cv2.putText(img_to_show, prediction, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, shape_color, 2)
+        return img_to_show
+
