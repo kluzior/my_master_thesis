@@ -61,6 +61,19 @@ class ImageProcessor:
                 cropped_raw_images.append(image_raw[y:y+h, x:x+w])
         return cropped_images, coordinates, cropped_raw_images
     
+    def crop_contour(self, image, contour, margin=1, image_raw=None):
+        x, y, w, h = cv2.boundingRect(contour)
+        x = max(0, x - margin)
+        y = max(0, y - margin)
+        w = min(image.shape[1] - x, w + 2 * margin)
+        h = min(image.shape[0] - y, h + 2 * margin)
+        mask = np.zeros_like(image)
+        cv2.drawContours(mask, [contour], 0, 255, thickness=cv2.FILLED)
+        masked_image = cv2.bitwise_and(image, image, mask=mask)
+        cropped_image = masked_image[y:y+h, x:x+w]
+        contour_frame = (x, y, w, h)
+        return cropped_image, contour_frame
+    
     def ignore_background(self, image, vertices):
         mask = np.zeros_like(image)
         cv2.fillPoly(mask, [vertices], (255,255,255))

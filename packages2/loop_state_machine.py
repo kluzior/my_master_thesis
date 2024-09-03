@@ -89,6 +89,7 @@ class LoopStateMachine:
             cv2.waitKey(1000)
             cv2.destroyWindow("captured picure")   
 
+        ### PREPARE IMAGE
             uimg = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
             gray = cv2.cvtColor(uimg, cv2.COLOR_BGR2GRAY)
             buimg = self.ip.apply_binarization(gray)
@@ -97,14 +98,43 @@ class LoopStateMachine:
             cv2.imshow("prepared picure", final_img)
             cv2.waitKey(1000)
             cv2.destroyWindow("prepared picure")   
+        ###
 
-
+        ### FIND CONTOURS
             contours, _ = cv2.findContours(final_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
-            M = cv2.moments(contours[0])
-            self.target_pixel[0] = int(M['m10'] / M['m00'])
-            self.target_pixel[1] = int(M['m01'] / M['m00'])
-            print(f"cx: {self.target_pixel[0]}, cy: {self.target_pixel[1]}")
+        ###
+
+
+        ### FOR EACH CONTOURS
+            for contour in contours:
+                pass
+            ### CALCULATE CENTER POINT + CHECK IF IT GRIPPABLE
+                M = cv2.moments(contour)
+                self.target_pixel[0] = int(M['m10'] / M['m00'])
+                self.target_pixel[1] = int(M['m01'] / M['m00'])
+                print(f"cx: {self.target_pixel[0]}, cy: {self.target_pixel[1]}")
+            ###
+
+            ### CROP CONTOUR TO IDENTIFY + STANDARIZE
+                cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
+                cv2.imshow("cropped_image", cropped_image)
+                cv2.waitKey(1000)
+                cv2.destroyWindow("cropped_image")
+            ###
+
+            ### CLASSIFICATION 
+            
+            ###
+
+            ### APPEND EVERYTHING TO DICTIONARY(?), 
+            #       I WANT TO HAVE INFO ABOUT LABEL, PROBABILITY & CENTER/GRIPPER POINT, 
+
+            ###
+
+
+        ### ON BEHALF OF ZAŁOŻENIA MAKE DECISION WHICH ONE TO PICK UP
+
 
 
         # Logic for identifying contours
