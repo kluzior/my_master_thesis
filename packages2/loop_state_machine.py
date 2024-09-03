@@ -132,6 +132,9 @@ class LoopStateMachine:
 
         ### VISUALISE IDENTIFICATION RESULTS
         cv2.imshow("identification results", self.nnc.visualize(uimg, self.objects_record))
+
+        ### ADD SAVING THIS IMAGE TO FILES!!!
+
         cv2.waitKey(5000)
         cv2.destroyWindow("identification results")
 
@@ -141,6 +144,15 @@ class LoopStateMachine:
 
     def choose_object2pick_up(self, label):
         print("Choose position according to strategy")
+
+        ## strategy - random
+
+
+        ## strategy - po kolei
+
+
+        ## strategy tylko label on input
+
         target_pixel = self.get_best_pixel_coords(label)
         wait_position_reached = True
         if wait_position_reached:
