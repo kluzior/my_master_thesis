@@ -172,3 +172,5 @@ test_functions/
 
 # my folders
 data/
+
+test_*
