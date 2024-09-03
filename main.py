@@ -58,7 +58,9 @@ else:
 
 
 # LOOP
-loop = LoopStateMachine(c, camera_intrinsic_path, handeye_path)
+mlp_model_path = 'data/results/models/mlp_model_accuracy_1_0000_lbfgs_logistic_constant_batch32_09-07_03-31.joblib'
+
+loop = LoopStateMachine(c, camera_intrinsic_path, handeye_path, mlp_model_path)
 
 loop.run()
 
