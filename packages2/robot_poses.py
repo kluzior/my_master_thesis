@@ -3,6 +3,25 @@ import math
 class RobotPoses:
     vacuum_gripper = 9
 
+    look_at_chessboard = {
+        "x": -0.190,
+        "y": 0.110,
+        "z": 0.635,
+        "Rx": -2.8651,
+        "Ry": -1.2757,
+        "Rz": 0
+    } 
+
+    look_at_objects = {
+        "x": -0.190,
+        "y": 0.110,
+        "z": 0.638,
+        "Rx": -2.8651,
+        "Ry": -1.2757,
+        "Rz": 0
+    } 
+
+
     bank1 = {
         "x": 0.120,
         "y": 0.200,
@@ -44,4 +63,4 @@ class RobotPoses:
         "Rz": 0
     } 
 
-    banks = [bank1, bank2, bank3, bank4, bank5]
+    banks = [None, bank1, bank2, bank3, bank4, bank5]

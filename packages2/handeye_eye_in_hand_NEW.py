@@ -1,5 +1,6 @@
 import time
 from packages2.robot_positions import RobotPositions
+from packages2.robot_poses import RobotPoses
 from packages2.robot_functions import RobotFunctions
 from packages2.image_processor import ImageProcessor
 from packages2.common import show_camera, pose2rvec_tvec, rvec_tvec2pose, pose_list_to_dict
@@ -42,10 +43,11 @@ class HandEyeCalibration:
         camera_thread.start()
 
         robot_functions = RobotFunctions(self.c)
-        robot_poses = RobotPositions()
+        robot_positions = RobotPositions()
+        robot_poses = RobotPoses()
 
         try:
-            robot_functions.moveJ(RobotPositions.look_at_chessboard)
+            robot_functions.moveJ_pose(robot_poses.look_at_chessboard)
 
             folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
             directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
@@ -79,7 +81,7 @@ class HandEyeCalibration:
             robot_poses_read_from_robot = []
             i = 0
             n = 0
-            for pose in robot_poses.poses_2:
+            for pose in robot_positions.poses_2:
                 robot_functions.moveJ(pose)
 
                 frame_event.set()
@@ -218,6 +220,33 @@ class HandEyeCalibration:
         data = np.load(f"{handeye_path}/waiting_pos/wait_pose.npz")
         wait_pose = data['wait_pose']
         tcp2base_rmtx, tcp2base_rvec, tcp2base_tvec = pose2rvec_tvec(wait_pose)
+
+        # Calculate object to TCP transformation matrix
+        obj2tcp_rmtx, obj2tcp_tvec = self.combine_transformations(obj2cam_rmtx, obj2cam_tvec, camera2tcp_rmtx, camera2tcp_tvec)
+
+        # Calculate object to base transformation matrix
+        obj2base_rmtx, obj2base_tvec = self.combine_transformations(obj2tcp_rmtx, obj2tcp_tvec, tcp2base_rmtx, tcp2base_tvec)
+        
+        obj2base_rvec, _ = cv2.Rodrigues(obj2base_rmtx)
+        final_pose = rvec_tvec2pose(obj2base_rvec, obj2base_tvec)
+        final_pose_dict = pose_list_to_dict(final_pose)
+        return final_pose_dict, final_pose
+    
+
+    def calculate_point_pose2robot_base_new(self, obj2cam_rmtx, obj2cam_tvec, tcp2base_rmtx, tcp2base_tvec, handeye_path, handeye_type='tsai'):
+        handeye_files = {
+            'tsai'      : 'R_T_results_tsai.npz',
+            'park'      : 'R_T_results_park.npz',
+            'horaud'    : 'R_T_results_horaud.npz',
+            'daniilidis': 'R_T_results_daniilidis.npz'
+        }
+        if handeye_type not in handeye_files:
+            raise ValueError(f"Invalid handeye_type: {handeye_type}. Must be one of {list(handeye_files.keys())}")
+        
+        # Import calculated camera to TCP transformation matrix
+        data = np.load(f"{handeye_path}/{handeye_files[handeye_type]}")
+        camera2tcp_rmtx = data['camera_tcp_rmtx']
+        camera2tcp_tvec = data['camera_tcp_tvec']
 
         # Calculate object to TCP transformation matrix
         obj2tcp_rmtx, obj2tcp_tvec = self.combine_transformations(obj2cam_rmtx, obj2cam_tvec, camera2tcp_rmtx, camera2tcp_tvec)

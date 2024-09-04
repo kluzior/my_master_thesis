@@ -3,12 +3,13 @@ from packages2.robot_positions import RobotPositions
 from packages2.image_processor import ImageProcessor
 from packages2.plane_determination import PlaneDeterminator
 from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
-from packages2.common import show_camera
+from packages2.common import show_camera, pose2rvec_tvec
 from packages2.neural_network import NN_Classificator
 
 import cv2
 import threading
 import time
+import numpy as np
 
 from packages2.robot_poses import RobotPoses
 import random
@@ -32,7 +33,7 @@ class LoopStateMachine:
         self.camera_thread = threading.Thread(target=show_camera, args=(self.frame_event, self.frame_storage, self.stop_event))
         self.camera_thread.start()
         self.objects_record = []
-        self.bank_counters =  list(0 for _ in range(5))
+        self.bank_counters =  list(0 for _ in range(6))
 
     def run(self):
         while True:
@@ -63,7 +64,7 @@ class LoopStateMachine:
 
     def go_to_wait_position_init(self):
         print("Going to wait position...")
-        ret = self.rf.moveJ(RobotPositions.look_at_chessboard)
+        ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
 
         self.frame_event.set()  # signal camera thread to capture frame
         while self.frame_event.is_set():
@@ -78,7 +79,7 @@ class LoopStateMachine:
 
     def go_to_wait_position(self):
         print("Going to wait position...")
-        ret = self.rf.moveJ(RobotPositions.look_at_chessboard)
+        ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
         if ret == 0:
             time.sleep(1)
             self.state = 'IdentificationContours'
@@ -102,11 +103,55 @@ class LoopStateMachine:
             contours, _ = cv2.findContours(final_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
 
+            img_to_show_elipse = uimg.copy()
+            img_to_show_elipse2 = uimg.copy()
+
             for contour in contours:
                 target_pixel = self.calculate_center_point(contour)
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
                 contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
                 self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
+
+                ellipse = cv2.fitEllipse(contour)
+                cv2.ellipse(img_to_show_elipse, ellipse, (0, 255, 0), 2)
+                (center, axes, angle) = ellipse
+                center = tuple(map(int, center))  # Konwersja do int dla rysowania
+                major_axis_length = axes[0] / 2  # Połowa dłuższej osi
+                # Obliczanie punktów na końcach głównej osi elipsy
+                x_offset = int(major_axis_length * np.cos(np.deg2rad(angle)))
+                y_offset = int(major_axis_length * np.sin(np.deg2rad(angle)))
+                
+                p1 = (center[0] - x_offset, center[1] - y_offset)
+                p2 = (center[0] + x_offset, center[1] + y_offset)
+                
+                # Rysowanie głównej osi konturu
+                cv2.line(img_to_show_elipse, p1, p2, (255, 0, 0), 2)
+
+
+                # Obliczanie momentów konturu
+                M = cv2.moments(contour)
+
+                if M['m00'] != 0:
+                    # Środek masy konturu
+                    cx = int(M['m10'] / M['m00'])
+                    cy = int(M['m01'] / M['m00'])
+
+                    # Obliczanie kąta orientacji
+                    angle = 0.5 * np.arctan2(2 * M['mu11'], (M['mu20'] - M['mu02']))
+
+                    # Rysowanie środka masy
+                    cv2.circle(img_to_show_elipse2, (cx, cy), 5, (0, 0, 255), -1)
+
+                    # Rysowanie osi konturu
+                    length = 100  # Długość osi
+                    x2 = int(cx + length * np.cos(angle))
+                    y2 = int(cy + length * np.sin(angle))
+                    cv2.line(img_to_show_elipse2, (cx, cy), (x2, y2), (255, 0, 0), 2)
+
+
+        cv2.imshow("img_to_show_elipse", img_to_show_elipse)
+
+        cv2.imshow("img_to_show_elipse2", img_to_show_elipse2)
 
         ### VISUALISE IDENTIFICATION RESULTS
         img_identification_result = self.nnc.visualize(uimg, self.objects_record)
@@ -116,6 +161,11 @@ class LoopStateMachine:
 
         cv2.waitKey(3000)
         cv2.destroyWindow("identification results")
+        cv2.destroyWindow("img_to_show_elipse")
+        cv2.destroyWindow("img_to_show_elipse2")
+
+
+
 
         contours_identified = True
         if contours_identified:
@@ -139,7 +189,10 @@ class LoopStateMachine:
         print("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
-        target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
+        robot_pose = self.rf.give_pose()
+        rotation_matrix, _, tvec = pose2rvec_tvec(list(robot_pose))
+
+        target_pose, _ = self.he.calculate_point_pose2robot_base_new(self.pd.rmtx, pose.reshape(-1, 1), rotation_matrix, tvec, self.handeye_path)
         target_pose_waitpos = target_pose.copy()
         target_pose_waitpos["z"] += 0.1
         self.rf.moveJ_pose(target_pose_waitpos)
