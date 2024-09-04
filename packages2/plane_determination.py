@@ -33,8 +33,7 @@ class PlaneDeterminator:
     def pixel_to_camera_plane(self, pixel):
         # Konwersja punktu 2D na promień 3D w układzie kamery
         pixel_homog = np.array([pixel[0], pixel[1], 1.0])
-        # ray_direction = np.linalg.inv(self.camera_matrix) @ pixel_homog
-        ray_direction = np.linalg.inv(self.newcameramtx) @ pixel_homog          # should working better
+        ray_direction = np.linalg.inv(self.camera_matrix) @ pixel_homog
 
         # Przeskalowanie wektora kierunkowego promienia
         ray_direction = ray_direction / np.linalg.norm(ray_direction)

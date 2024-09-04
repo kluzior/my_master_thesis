@@ -23,6 +23,7 @@ class LoopStateMachine:
         self.handeye_path = handeye_path
         self.he = HandEyeCalibration(camera_intrinsic_path, c)
 
+        self.robposes = RobotPoses()
 
         self.pd = PlaneDeterminator(camera_intrinsic_path, handeye_path)
 
@@ -166,12 +167,11 @@ class LoopStateMachine:
     def go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
         self.clear_records()
-        pose = self.pd.pixel_to_camera_plane(target_pixel)
+        pose = self.pd.pixel_to_camera_plane(target_pixel, 1)
         print(f"pose: {pose}")
         target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
         print(f"target_pose: {target_pose}")
 
-        target_pose = self.offset_z_axis(target_pose, -0.02)        # go to gripper
 
         target_pose_waitpos = target_pose.copy()
         target_pose_waitpos["z"] += 0.1
@@ -190,7 +190,7 @@ class LoopStateMachine:
     def pick_up_and_move(self, label):
         print("Picking up object and moving to position...")
         object_height = 0.008
-        bank_pose = RobotPoses.banks[label]
+        bank_pose = self.robposes.banks[label]
 
         bank_pose["z"] += self.bank_counters[label] * object_height
 
@@ -206,7 +206,7 @@ class LoopStateMachine:
 
         self.bank_counters[label] += 1
 
-        print(f"BANK COUNTER TEST: {self.bank_counters[label]}")
+        print(f"BANK COUNTER TEST [{label}]: {self.bank_counters[label]}")
 
         # pick_up_and_move_done = True
         if ret == 0:
