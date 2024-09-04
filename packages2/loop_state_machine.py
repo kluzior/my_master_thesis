@@ -151,7 +151,7 @@ class LoopStateMachine:
 
         ## strategy - po kolei
         if strategy == "sequence":
-            target_pixel = self.search_by_labels()
+            target_pixel, label = self.search_by_labels()
 
         ## strategy tylko label on input
         if strategy == "only_label":
@@ -167,7 +167,7 @@ class LoopStateMachine:
     def go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
         self.clear_records()
-        pose = self.pd.pixel_to_camera_plane(target_pixel, 1)
+        pose = self.pd.pixel_to_camera_plane(target_pixel)
         print(f"pose: {pose}")
         target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
         print(f"target_pose: {target_pose}")
@@ -191,7 +191,7 @@ class LoopStateMachine:
         print("Picking up object and moving to position...")
         object_height = 0.008
         bank_pose = self.robposes.banks[label]
-
+        print(f"debug bank pose{bank_pose}")
         bank_pose["z"] += self.bank_counters[label] * object_height
 
         bank_pose_waitpos = bank_pose.copy()
@@ -250,7 +250,7 @@ class LoopStateMachine:
             filtered_records = [record for record in self.objects_record if record["label"] == label]
             if filtered_records:
                 best_record = max(filtered_records, key=lambda x: x["prediction"])
-                return best_record["pixel_coords"]
+                return best_record["pixel_coords"], label
         return None
     
 
