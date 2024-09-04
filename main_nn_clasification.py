@@ -42,7 +42,7 @@ if __name__ == "__main__":
         cv2.drawContours(img_to_show, roi_contours, -1, (255, 0, 255), 2)
         cv2.putText(img_to_show, "ROI", (roi_contours[0][0][0][0], roi_contours[0][0][0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 255), 2)
 
-        img_to_show = image_processor.undistort_frame(img_to_show, mtx, distortion)
+        img_to_show, _ = image_processor.undistort_frame(img_to_show, mtx, distortion)
 
         for idx, object in enumerate(objects):
             pred = classifier.predict_shape(object, mlp_model)

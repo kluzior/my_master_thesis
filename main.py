@@ -52,7 +52,7 @@ else:
 if OFFLINE_SIMULATION_ONLY:
     pass
 else:
-    handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='tsai')
+    # handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='tsai')
     pass
 
 
