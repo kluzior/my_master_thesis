@@ -1,7 +1,7 @@
 """
 MAIN PROGRAM TO CONTROL UR COBOT WITH VISUAL SYSTEM
 
-program działa z 2024_08_30_SK_comm
+program działa z 2024_09_03_SK_comm
 """
 
 from packages2.common import start_communication
