@@ -34,7 +34,7 @@ camera_calibrator = CameraCalibrator(c)
 if COLLECT_CAMERA_CALIB_DATA:
     camera_intrinsic_path = camera_calibrator.run()
 else:
-    cc_files = "data/results/for_camera_calib/images_04-09_12-43"
+    cc_files = "data/results/for_camera_calib/images_04-09_13-37"
     camera_intrinsic_path = camera_calibrator.run(cc_files)
 print(f"camera_intrinsic_path: {camera_intrinsic_path}")
 
@@ -44,7 +44,7 @@ handeye_calibrator = HandEyeCalibration(camera_intrinsic_path, c)
 if COLLECT_HAND_EYE_CALIB_DATA:
     handeye_path = handeye_calibrator.run()
 else:
-    he_files = "data/results/for_hand_eye_calib/images_04-09_12-44"
+    he_files = "data/results/for_hand_eye_calib/images_04-09_13-38"
     handeye_path = handeye_calibrator.run(he_files)
 
 
@@ -52,7 +52,7 @@ else:
 if OFFLINE_SIMULATION_ONLY:
     pass
 else:
-    # handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='tsai')
+    handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='tsai')
     pass
 
 

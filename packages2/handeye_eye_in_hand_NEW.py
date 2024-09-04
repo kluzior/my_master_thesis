@@ -244,9 +244,12 @@ class HandEyeCalibration:
             # calculate pose
             target_pose = self.generate_test_pose(str(files_path), point_shift, handeye_type)
             self._logger.info(f"calculated pose: {target_pose}")
-
+            target_pose_waitpos = target_pose.copy()
+            target_pose_waitpos["z"] += 0.1
             # send robot to poses
-            self.robot_functions.moveJ_pose(target_pose)
+            self.robot_functions.moveJ_pose(target_pose_waitpos)
             time.sleep(1)
-
+            self.robot_functions.moveL_pose(target_pose)
+            time.sleep(1)
+            self.robot_functions.moveJ_pose(target_pose_waitpos)
 
