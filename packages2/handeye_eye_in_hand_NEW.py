@@ -91,7 +91,7 @@ class HandEyeCalibration:
                     _img = frame_storage['frame']
                     gray = _img.copy()
                     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-                    ugray = self.image_procesor.undistort_frame(gray, self.mtx, self.dist)
+                    ugray, _ = self.image_procesor.undistort_frame(gray, self.mtx, self.dist)
                     ret, _ = cv2.findChessboardCorners(ugray, self.chess_size, None)
                     if not ret:
                         self._logger.warning(f"Photo no. {i} was skipped!")
@@ -153,7 +153,7 @@ class HandEyeCalibration:
         rob_rvecs = []
         rob_tvecs = []
         for robot_pose, image in zip(robot_poses_read_from_robot, images):
-            u_image = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
+            u_image, _ = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
             cam_rvec, cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(u_image)
             cam_rvecs.append(cam_rvec)
             cam_tvecs.append(cam_tvec)
@@ -194,7 +194,7 @@ class HandEyeCalibration:
 
     def determine_rvec_tvec_for_chess_point(self, img_path, point_shift=(0,0)):
         image = cv2.imread(img_path)
-        uimg = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
+        uimg, _ = self.image_procesor.undistort_frame(image, self.mtx, self.dist)
         obj2cam_rvec, obj2cam_tvec, _ = self.image_procesor.calculate_rvec_tvec(uimg, point_shift=point_shift)
         obj2cam_rmtx, _ = cv2.Rodrigues(obj2cam_rvec)
         return obj2cam_rmtx, obj2cam_tvec

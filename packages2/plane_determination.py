@@ -10,7 +10,7 @@ class PlaneDeterminator:
         self.camera_matrix, self.dist_params = self.image_processor.load_camera_params(self.camera_params_path)
         
         self.frame = cv2.imread(handeye_path + "/waiting_pos/WAITING_POSE.jpg")
-        self.uframe = self.image_processor.undistort_frame(self.frame, self.camera_matrix, self.dist_params)
+        self.uframe, self.newcameramtx = self.image_processor.undistort_frame(self.frame, self.camera_matrix, self.dist_params)
         self.handeye_path = handeye_path
         self.get_plane_points(self.uframe)
 
@@ -23,7 +23,7 @@ class PlaneDeterminator:
         # Wektor normalny do płaszczyzny
         self.normal_vector = R[:, 2]  # Trzecia kolumna macierzy R
 
-        # Punkt na płaszczyźnie (np. środek szachownicy)
+        # Punkt na płaszczyźnie
         self.point_on_plane = tvec.flatten()
 
         self.rmtx = R
@@ -32,9 +32,9 @@ class PlaneDeterminator:
 
     def pixel_to_camera_plane(self, pixel):
         # Konwersja punktu 2D na promień 3D w układzie kamery
-        # pixel = pixel.flatten()
         pixel_homog = np.array([pixel[0], pixel[1], 1.0])
-        ray_direction = np.linalg.inv(self.camera_matrix) @ pixel_homog
+        # ray_direction = np.linalg.inv(self.camera_matrix) @ pixel_homog
+        ray_direction = np.linalg.inv(self.newcameramtx) @ pixel_homog          # should working better
 
         # Przeskalowanie wektora kierunkowego promienia
         ray_direction = ray_direction / np.linalg.norm(ray_direction)
@@ -59,6 +59,6 @@ class PlaneDeterminator:
         rvec, _, test_pixel = self.image_processor.calculate_rvec_tvec(self.uframe, point_shift=(7,6))
         test_pixel = tuple(test_pixel[0])
         pose = self.pixel_to_camera_plane(test_pixel)
-        target_pose = self.he.calculate_point_pose2robot_base(self.rmtx, pose.reshape(-1, 1), self.handeye_path)
+        _, target_pose = self.he.calculate_point_pose2robot_base(self.rmtx, pose.reshape(-1, 1), self.handeye_path)
 
         return target_pose

@@ -22,7 +22,7 @@ class ImageProcessor:
         undst = cv2.undistort(frame, mtx, distortion, None, newcameramtx)
         x, y, w, h = roi
         undst = undst[y:y+h, x:x+w]
-        return undst
+        return undst, newcameramtx
 
     def apply_binarization(self, gray, binarization='standard'):
         if binarization == 'standard' or binarization == 'raw':

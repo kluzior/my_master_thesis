@@ -49,7 +49,7 @@ class LoopStateMachine:
             elif self.state == 'IdentificationContours':
                 self.identification_contours()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label = self.choose_object2pick_up(3)
+                target_pixel, label = self.choose_object2pick_up()
             elif self.state == 'GoToPickUpObject':
                 self.go_to_pick_up_object(target_pixel, label)
             elif self.state == 'PickUpAndMove':
@@ -74,7 +74,7 @@ class LoopStateMachine:
             time.sleep(0.1)  # wait a bit before checking again
         if 'frame' in self.frame_storage:
             _img = self.frame_storage['frame']
-            uimg = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
+            uimg, _ = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
             self.table_roi_points = self.ip.get_roi_points(uimg)
 
         if self.table_roi_points is not None:
@@ -100,7 +100,7 @@ class LoopStateMachine:
             cv2.destroyWindow("captured picure")   
 
         ### PREPARE IMAGE
-            uimg = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
+            uimg, _ = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
             gray = cv2.cvtColor(uimg, cv2.COLOR_BGR2GRAY)
             buimg = self.ip.apply_binarization(gray)
             final_img, _ = self.ip.ignore_background(buimg, self.table_roi_points)
@@ -142,18 +142,20 @@ class LoopStateMachine:
         if contour_identified:
             self.state = 'ChooseObjectToPickUp'
 
-    def choose_object2pick_up(self, label):
+    def choose_object2pick_up(self, strategy="sequence", label=2):
         print("Choose position according to strategy")
 
         ## strategy - random
 
 
         ## strategy - po kolei
-
+        if strategy == "sequence":
+            target_pixel = self.search_by_labels()
 
         ## strategy tylko label on input
+        if strategy == "only_label":
+            target_pixel = self.get_best_pixel_coords(label)
 
-        target_pixel = self.get_best_pixel_coords(label)
         wait_position_reached = True
         if wait_position_reached:
             self.state = 'GoToPickUpObject'
@@ -168,6 +170,8 @@ class LoopStateMachine:
         print(f"pose: {pose}")
         target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
         print(f"target_pose: {target_pose}")
+
+        target_pose = self.offset_z_axis(target_pose, -0.02)        # go to gripper
 
         target_pose_waitpos = target_pose.copy()
         target_pose_waitpos["z"] += 0.1
@@ -240,3 +244,16 @@ class LoopStateMachine:
             return None
         best_record = max(filtered_records, key=lambda x: x["prediction"])
         return best_record["pixel_coords"]
+    
+    def search_by_labels(self):
+        for label in range(1, 6):
+            filtered_records = [record for record in self.objects_record if record["label"] == label]
+            if filtered_records:
+                best_record = max(filtered_records, key=lambda x: x["prediction"])
+                return best_record["pixel_coords"]
+        return None
+    
+
+    def offset_z_axis(self, pose, offset):
+        pose["z"] += offset
+        return pose
