@@ -11,6 +11,7 @@ import threading
 import time
 
 from packages2.robot_poses import RobotPoses
+import random
 
 
 
@@ -22,21 +23,15 @@ class LoopStateMachine:
         self.rf = RobotFunctions(c)
         self.handeye_path = handeye_path
         self.he = HandEyeCalibration(camera_intrinsic_path, c)
-
         self.robposes = RobotPoses()
-
         self.pd = PlaneDeterminator(camera_intrinsic_path, handeye_path)
-
         self.nnc = NN_Classificator(mlp_model_path)
-
         self.frame_event = threading.Event()
         self.stop_event = threading.Event()
         self.frame_storage = {}
         self.camera_thread = threading.Thread(target=show_camera, args=(self.frame_event, self.frame_storage, self.stop_event))
         self.camera_thread.start()
-
         self.objects_record = []
-
         self.bank_counters =  list(0 for _ in range(5))
 
     def run(self):
@@ -50,7 +45,7 @@ class LoopStateMachine:
             elif self.state == 'IdentificationContours':
                 self.identification_contours()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label = self.choose_object2pick_up()
+                target_pixel, label = self.choose_object2pick_up(strategy="sequence")
             elif self.state == 'GoToPickUpObject':
                 self.go_to_pick_up_object(target_pixel, label)
             elif self.state == 'PickUpAndMove':
@@ -63,7 +58,7 @@ class LoopStateMachine:
 
     def initialization(self):
         print("Initializing robot...")
-        # Initialization logic here
+
         self.state = 'GoToWaitPosition_init'
 
     def go_to_wait_position_init(self):
@@ -95,12 +90,6 @@ class LoopStateMachine:
             time.sleep(0.1)  # wait a bit before checking again
         if 'frame' in self.frame_storage:    
             _img = self.frame_storage['frame']
-
-            cv2.imshow("captured picure", _img)
-            cv2.waitKey(1000)
-            cv2.destroyWindow("captured picure")   
-
-        ### PREPARE IMAGE
             uimg, _ = self.ip.undistort_frame(_img, self.camera_mtx, self.dist_params)
             gray = cv2.cvtColor(uimg, cv2.COLOR_BGR2GRAY)
             buimg = self.ip.apply_binarization(gray)
@@ -109,80 +98,55 @@ class LoopStateMachine:
             cv2.imshow("prepared picure", final_img)
             cv2.waitKey(1000)
             cv2.destroyWindow("prepared picure")   
-        ###
 
-        ### FIND CONTOURS
             contours, _ = cv2.findContours(final_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
-        ###
 
             for contour in contours:
-            ### CALCULATE CENTER POINT + CHECK IF IT GRIPPABLE
-                target_pixel = [0, 0] 
-                M = cv2.moments(contour)
-                target_pixel[0] = float(M['m10'] / M['m00'])
-                target_pixel[1] = float(M['m01'] / M['m00'])
-                print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
-            ###
-
+                target_pixel = self.calculate_center_point(contour)
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
-
                 contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
-
                 self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
 
         ### VISUALISE IDENTIFICATION RESULTS
-        cv2.imshow("identification results", self.nnc.visualize(uimg, self.objects_record))
+        img_identification_result = self.nnc.visualize(uimg, self.objects_record)
+        cv2.imshow("identification results", img_identification_result)
 
         ### ADD SAVING THIS IMAGE TO FILES!!!
 
-        cv2.waitKey(5000)
+        cv2.waitKey(3000)
         cv2.destroyWindow("identification results")
 
-        contour_identified = True
-        if contour_identified:
+        contours_identified = True
+        if contours_identified:
             self.state = 'ChooseObjectToPickUp'
 
     def choose_object2pick_up(self, strategy="sequence", label=2):
         print("Choose position according to strategy")
-
-        ## strategy - random
-
-
-        ## strategy - po kolei
+        if strategy == "random":
+            target_pixel, label = self.pick_random()
         if strategy == "sequence":
             target_pixel, label = self.search_by_labels()
-
-        ## strategy tylko label on input
         if strategy == "only_label":
             target_pixel = self.get_best_pixel_coords(label)
-
         wait_position_reached = True
         if wait_position_reached:
             self.state = 'GoToPickUpObject'
             return target_pixel, label
 
 
-
     def go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
-        print(f"pose: {pose}")
         target_pose, _ = self.he.calculate_point_pose2robot_base(self.pd.rmtx, pose.reshape(-1, 1), self.handeye_path)
-        print(f"target_pose: {target_pose}")
-
-
         target_pose_waitpos = target_pose.copy()
         target_pose_waitpos["z"] += 0.1
-        # Logic to move robot to the contour position
-        # Simulate reaching contour position
         self.rf.moveJ_pose(target_pose_waitpos)
         time.sleep(1)
         ret = self.rf.moveL_pose(target_pose)
         time.sleep(1)
         ret = self.rf.moveL_pose(target_pose_waitpos)
-
 
         if ret == 0:
             self.state = 'PickUpAndMove'
@@ -191,12 +155,10 @@ class LoopStateMachine:
         print("Picking up object and moving to position...")
         object_height = 0.008
         bank_pose = self.robposes.banks[label]
-        print(f"debug bank pose{bank_pose}")
-        bank_pose["z"] += self.bank_counters[label] * object_height
+        bank_pose["z"] += (self.bank_counters[label] + 1) * object_height
 
         bank_pose_waitpos = bank_pose.copy()
         bank_pose_waitpos["z"] += 0.1
-
 
         self.rf.moveJ_pose(bank_pose_waitpos)
         time.sleep(1)
@@ -206,23 +168,15 @@ class LoopStateMachine:
 
         self.bank_counters[label] += 1
 
-        print(f"BANK COUNTER TEST [{label}]: {self.bank_counters[label]}")
-
-        # pick_up_and_move_done = True
         if ret == 0:
             self.state = 'ReturnToWaitPosition'
 
     def return_to_wait_position(self):
         print("Returning to wait position...")
-        # Logic to move robot back to wait position
-        # Simulate reaching wait position
+
         wait_position_reached = True
         if wait_position_reached:
             self.state = 'GoToWaitPosition'
-
-
-
-
 
 
     def add_record2object(self, label, prediction, pixel_coords, contour_frame):
@@ -244,7 +198,7 @@ class LoopStateMachine:
             return None
         best_record = max(filtered_records, key=lambda x: x["prediction"])
         return best_record["pixel_coords"]
-    
+
     def search_by_labels(self):
         for label in range(1, 6):
             filtered_records = [record for record in self.objects_record if record["label"] == label]
@@ -252,8 +206,22 @@ class LoopStateMachine:
                 best_record = max(filtered_records, key=lambda x: x["prediction"])
                 return best_record["pixel_coords"], label
         return None
-    
+
+    def pick_random(self):
+        filtered_records = [record for record in self.objects_record if record["label"] in range(1, 6)]
+        if filtered_records:
+            random_record = random.choice(filtered_records)
+            return random_record["pixel_coords"], random_record["label"]
+        return None
 
     def offset_z_axis(self, pose, offset):
         pose["z"] += offset
         return pose
+
+    def calculate_center_point(self, contour):
+        target_pixel = [0, 0] 
+        M = cv2.moments(contour)
+        target_pixel[0] = float(M['m10'] / M['m00'])
+        target_pixel[1] = float(M['m01'] / M['m00'])
+        print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
+        return target_pixel
