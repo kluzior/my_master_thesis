@@ -341,9 +341,14 @@ class NN_Classificator:
         for record in records:
             shape_label = self.shape_labels[record["label"]]
             shape_color = self.shape_colors[shape_label]
+            prediction = record["prediction"]
             x, y, w, h = record["contour_frame"]
-            cv2.rectangle(img_to_show, (x, y), (x + w, y + h), shape_color, 2)
-            prediction = str(record["prediction"])
-            cv2.putText(img_to_show, prediction, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, shape_color, 2)
+            if prediction < 0.96:
+                # cv2.rectangle(img_to_show, (x, y), (x + w, y + h), [0, 0, 255], 2)
+                cv2.putText(img_to_show, "Not classified", (x, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
+                cv2.putText(img_to_show, str(prediction), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
+            else:
+                cv2.rectangle(img_to_show, (x, y), (x + w, y + h), shape_color, 2)
+                cv2.putText(img_to_show, str(prediction), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, shape_color, 2)
         return img_to_show
 
