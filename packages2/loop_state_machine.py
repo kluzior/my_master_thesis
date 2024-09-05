@@ -45,6 +45,8 @@ class LoopStateMachine:
                 self.go_to_wait_position()
             elif self.state == 'IdentificationContours':
                 self.identification_contours()
+            elif self.state == 'WaitForObjects':
+                self.wait_for_objects()
             elif self.state == 'ChooseObjectToPickUp':
                 target_pixel, label = self.choose_object2pick_up(strategy="sequence")
             elif self.state == 'GoToPickUpObject':
@@ -85,6 +87,7 @@ class LoopStateMachine:
             self.state = 'IdentificationContours'
 
     def identification_contours(self):
+        contours_identified = False
         print("Identifying contours...")
         self.frame_event.set()  # signal camera thread to capture frame
         while self.frame_event.is_set():
@@ -164,12 +167,15 @@ class LoopStateMachine:
         cv2.destroyWindow("img_to_show_elipse")
         cv2.destroyWindow("img_to_show_elipse2")
 
-
-
-
-        contours_identified = True
-        if contours_identified:
+        if not self.objects_record:
+            self.state = 'WaitForObjects'
+        else:
             self.state = 'ChooseObjectToPickUp'
+
+    def wait_for_objects(self):
+        print("Waiting for objects")
+        time.sleep(5)
+        self.state = 'IdentificationContours'
 
     def choose_object2pick_up(self, strategy="sequence", label=2):
         print("Choose position according to strategy")
