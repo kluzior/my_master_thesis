@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from packages2.image_processor import ImageProcessor
-from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
+from packages2.handeye_eye_in_hand import HandEyeCalibration
 
 class PlaneDeterminator:
     def __init__(self, camera_params_path, handeye_path):

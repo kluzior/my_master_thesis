@@ -2,7 +2,7 @@ from packages2.robot_functions import RobotFunctions
 from packages2.robot_positions import RobotPositions
 from packages2.image_processor import ImageProcessor
 from packages2.plane_determination import PlaneDeterminator
-from packages2.handeye_eye_in_hand_NEW import HandEyeCalibration
+from packages2.handeye_eye_in_hand import HandEyeCalibration
 from packages2.common import show_camera, pose2rvec_tvec
 from packages2.neural_network import NN_Classificator
 
@@ -168,7 +168,6 @@ class LoopStateMachine:
         cv2.imshow("identification results", img_identification_result)
 
         ### ADD SAVING THIS IMAGE TO FILES!!!
-
         _img_path = f"{self.directory_with_time}/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
         cv2.imwrite(_img_path, img_identification_result)
 
