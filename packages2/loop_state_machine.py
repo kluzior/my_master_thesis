@@ -185,11 +185,12 @@ class LoopStateMachine:
             target_pixel, label = self.search_by_labels()
         if strategy == "only_label":
             target_pixel = self.get_best_pixel_coords(label)
-        wait_position_reached = True
-        if wait_position_reached:
+        if target_pixel is not None:
             self.state = 'GoToPickUpObject'
             return target_pixel, label
-
+        else:
+            self.state = 'WaitForObjects'
+            return None, None
 
     def go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
@@ -238,27 +239,27 @@ class LoopStateMachine:
     def clear_records(self):
         self.objects_record.clear()
 
-    def get_best_pixel_coords(self, label):
-        filtered_records = [record for record in self.objects_record if record["label"] == label]
+    def get_best_pixel_coords(self, label, prediction_threshold=0.96):
+        filtered_records = [record for record in self.objects_record if record["label"] == label and record["prediction"] >= prediction_threshold]
         if not filtered_records:
             return None
         best_record = max(filtered_records, key=lambda x: x["prediction"])
         return best_record["pixel_coords"]
 
-    def search_by_labels(self):
+    def search_by_labels(self, prediction_threshold=0.96):
         for label in range(1, 6):
-            filtered_records = [record for record in self.objects_record if record["label"] == label]
+            filtered_records = [record for record in self.objects_record if record["label"] == label and record["prediction"] >= prediction_threshold]
             if filtered_records:
                 best_record = max(filtered_records, key=lambda x: x["prediction"])
                 return best_record["pixel_coords"], label
-        return None
+        return None, None
 
-    def pick_random(self):
-        filtered_records = [record for record in self.objects_record if record["label"] in range(1, 6)]
+    def pick_random(self, prediction_threshold=0.96):
+        filtered_records = [record for record in self.objects_record if record["label"] in range(1, 6) and record["prediction"] >= prediction_threshold]
         if filtered_records:
             random_record = random.choice(filtered_records)
             return random_record["pixel_coords"], random_record["label"]
-        return None
+        return None, None
 
     def offset_z_axis(self, pose, offset):
         pose["z"] += offset
