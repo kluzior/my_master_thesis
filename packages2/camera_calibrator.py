@@ -6,7 +6,6 @@ import socket
 import cv2
 import threading
 import numpy as np
-# import datetime
 import os
 import logging
 from pathlib import Path
@@ -41,30 +40,23 @@ class CameraCalibrator:
         frame_storage = {}
         camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event, "Camera calibration"))
         camera_thread.start()
-
         robot_functions = RobotFunctions(self.c)
         robot_poses = RobotPositions()
 
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
-
             folder_with_time = "images_" + self.timestamp
             directory_with_time = Path("data/results/for_camera_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)
-            
             i = 0
             for pose in robot_poses.camera_calib_poses:
                 robot_functions.moveJ(pose)
-
                 frame_event.set()  # signal camera thread to capture frame
-                
                 while frame_event.is_set():
                     time.sleep(0.1)  # Wait a bit before checking again
-
                 if 'frame' in frame_storage:
                     i+=1
                     _img = frame_storage['frame']
-                    
                     gray = _img.copy()
                     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
                     ret, _ = cv2.findChessboardCorners(gray, self.chess_size , None)
@@ -104,13 +96,10 @@ class CameraCalibrator:
     
     def run_calibration(self, files_path):
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, self.max_iter, self.min_accuracy)
-
         objp = np.zeros((self.chess_size[0] * self.chess_size[1], 3), np.float32)
         objp[:,:2] = np.mgrid[0:self.chess_size[0],0:self.chess_size[1]].T.reshape(-1,2)
         objp = objp * self.square_size_m
-
         images = self.get_images(files_path)
-
         objpoints = [] 
         imgpoints = [] 
         num = 0
@@ -124,19 +113,16 @@ class CameraCalibrator:
                 self._logger.debug(f'photo {num} analyzed!')
                 num += 1 
         ret, self.camera_matrix, self.distortion_params, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, self.frame_size, None, None)
-        
         if ret:
             self._logger.info('Camera successfully calibrated!')
             self._logger.info(f'Calculated camera matrix: \n{self.camera_matrix}')
             self._logger.info(f"Calculated distortion parameters: \n{self.distortion_params}")
-
         camera_intrinsic_path = f"{files_path}/CameraParams.npz"
         np.savez(camera_intrinsic_path, cameraMatrix=self.camera_matrix, 
                                         dist=self.distortion_params, 
                                         rvecs=rvecs, 
                                         tvecs=tvecs)
         self._logger.info(f'Intrinsic camera parameters stored under path: {camera_intrinsic_path}')
-
         mean_error = 0 
         for i in range(len(objpoints)):
             imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], self.camera_matrix, self.distortion_params)
@@ -144,5 +130,4 @@ class CameraCalibrator:
             mean_error += error 
         error_value = mean_error/len(objpoints)
         self._logger.info(f'Calculated total reprojection error: \n{error_value}')
-
         return camera_intrinsic_path
