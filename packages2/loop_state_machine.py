@@ -199,13 +199,7 @@ class LoopStateMachine:
         rotation_matrix, _, tvec = pose2rvec_tvec(list(robot_pose))
 
         target_pose, _ = self.he.calculate_point_pose2robot_base_new(self.pd.rmtx, pose.reshape(-1, 1), rotation_matrix, tvec, self.handeye_path)
-        target_pose_waitpos = target_pose.copy()
-        target_pose_waitpos["z"] += 0.1
-        self.rf.moveJ_pose(target_pose_waitpos)
-        time.sleep(1)
-        ret = self.rf.moveL_pose(target_pose)
-        time.sleep(1)
-        ret = self.rf.moveL_pose(target_pose_waitpos)
+        ret = self.pick_object(target_pose)
 
         if ret == 0:
             self.state = 'PickUpAndMove'
@@ -216,14 +210,7 @@ class LoopStateMachine:
         bank_pose = self.robposes.banks[label]
         bank_pose["z"] += (self.bank_counters[label] + 1) * object_height
 
-        bank_pose_waitpos = bank_pose.copy()
-        bank_pose_waitpos["z"] += 0.1
-
-        self.rf.moveJ_pose(bank_pose_waitpos)
-        time.sleep(1)
-        self.rf.moveL_pose(bank_pose)
-        time.sleep(1)
-        ret = self.rf.moveL_pose(bank_pose_waitpos)
+        ret = self.drop_object(bank_pose)
 
         self.bank_counters[label] += 1
 
@@ -284,3 +271,29 @@ class LoopStateMachine:
         target_pixel[1] = float(M['m01'] / M['m00'])
         print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
         return target_pixel
+    
+    def pick_object(self, pose, z_offset=0.1):
+        pick_pose = pose.copy()
+        pick_pose["z"] += z_offset
+        # pick_pose = self.offset_z_axis(pick_pose, z_offset)
+        self.rf.moveJ_pose(pick_pose)
+        time.sleep(0.2)
+        self.rf.moveL_pose(pose)
+        time.sleep(0.2)
+        self.rf.set_gripper()
+        time.sleep(1)       # wait longer to give time for gripper to grip
+        self.rf.moveL_pose(pick_pose)
+        return False
+
+    def drop_object(self, pose, z_offset=0.1):
+        drop_pose = pose.copy()
+        drop_pose["z"] += z_offset
+        # pick_pose = self.offset_z_axis(pick_pose, z_offset)
+        self.rf.moveJ_pose(drop_pose)
+        time.sleep(0.2)
+        self.rf.moveL_pose(pose)
+        time.sleep(0.2)
+        self.rf.reset_gripper()
+        time.sleep(0.2)
+        self.rf.moveL_pose(drop_pose)
+        return False
