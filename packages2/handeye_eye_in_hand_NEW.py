@@ -8,21 +8,21 @@ import socket
 import cv2
 import threading
 import numpy as np
-import datetime
+# import datetime
 from pathlib import Path
 import os
 from scipy.spatial.transform import Rotation as R
 import logging
 
 class HandEyeCalibration:
-    def __init__(self, camera_params_path, c=None):
+    def __init__(self, camera_params_path, c=None, timestamp=None):
         self.camera_params_path = camera_params_path
         self.image_procesor = ImageProcessor(self.camera_params_path)
         self.mtx, self.dist = self.image_procesor.load_camera_params(self.camera_params_path)
         self.c = c
         self.chess_size = (8,7)
         self.robot_functions = RobotFunctions(self.c)
-
+        self.timestamp = timestamp
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'HandEyeCalibration({self}) was initialized.')
 
@@ -49,7 +49,7 @@ class HandEyeCalibration:
         try:
             robot_functions.moveJ_pose(robot_poses.look_at_chessboard)
 
-            folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
+            folder_with_time = "images_" + self.timestamp
             directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)
 

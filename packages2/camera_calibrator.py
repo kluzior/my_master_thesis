@@ -6,13 +6,13 @@ import socket
 import cv2
 import threading
 import numpy as np
-import datetime
+# import datetime
 import os
 import logging
 from pathlib import Path
 
 class CameraCalibrator:
-    def __init__(self, c=None):
+    def __init__(self, c=None, timestamp=None):
         self.c = c
         self.max_iter = 30
         self.min_accuracy = 0.001
@@ -20,6 +20,7 @@ class CameraCalibrator:
         self.frame_size = (640,480)
         self.square_size_mm = 40
         self.square_size_m = self.square_size_mm / 1000
+        self.timestamp = timestamp
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'CameraCalibrator({self}) was initialized.')
@@ -47,7 +48,7 @@ class CameraCalibrator:
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
 
-            folder_with_time = "images_" + datetime.datetime.now().strftime("%d-%m_%H-%M")
+            folder_with_time = "images_" + self.timestamp
             directory_with_time = Path("data/results/for_camera_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)
             

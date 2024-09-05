@@ -13,11 +13,13 @@ import numpy as np
 
 from packages2.robot_poses import RobotPoses
 import random
+from pathlib import Path
+import datetime
 
 
 
 class LoopStateMachine:
-    def __init__(self, c, camera_intrinsic_path, handeye_path, mlp_model_path):
+    def __init__(self, c, camera_intrinsic_path, handeye_path, mlp_model_path, timestamp):
         self.state = 'Initialization'
         self.ip = ImageProcessor(camera_intrinsic_path)
         self.camera_mtx, self.dist_params = self.ip.load_camera_params(camera_intrinsic_path)
@@ -34,6 +36,11 @@ class LoopStateMachine:
         self.camera_thread.start()
         self.objects_record = []
         self.bank_counters =  list(0 for _ in range(6))
+        self.timestamp = timestamp
+
+        folder_with_time = "images_" + timestamp
+        self.directory_with_time = Path("data/results/identification/"+folder_with_time)
+        self.directory_with_time.mkdir(parents=True, exist_ok=True)
 
     def run(self):
         while True:
@@ -161,6 +168,10 @@ class LoopStateMachine:
         cv2.imshow("identification results", img_identification_result)
 
         ### ADD SAVING THIS IMAGE TO FILES!!!
+
+        _img_path = f"{self.directory_with_time}/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
+        cv2.imwrite(_img_path, img_identification_result)
+
 
         cv2.waitKey(3000)
         cv2.destroyWindow("identification results")
