@@ -30,7 +30,7 @@ class LoopStateMachine:
         self.frame_event = threading.Event()
         self.stop_event = threading.Event()
         self.frame_storage = {}
-        self.camera_thread = threading.Thread(target=show_camera, args=(self.frame_event, self.frame_storage, self.stop_event))
+        self.camera_thread = threading.Thread(target=show_camera, args=(self.frame_event, self.frame_storage, self.stop_event, "State Machine"))
         self.camera_thread.start()
         self.objects_record = []
         self.bank_counters =  list(0 for _ in range(6))

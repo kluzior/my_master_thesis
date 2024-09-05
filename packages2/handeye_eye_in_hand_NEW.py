@@ -39,7 +39,7 @@ class HandEyeCalibration:
         frame_event = threading.Event()
         stop_event = threading.Event()
         frame_storage = {}
-        camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event))
+        camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event, "Hand-eye calibration"))
         camera_thread.start()
 
         robot_functions = RobotFunctions(self.c)

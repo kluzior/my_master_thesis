@@ -24,13 +24,13 @@ def start_communication(host = "192.168.0.1",   port = 10000):
         pass
     return c, s
 
-def show_camera(frame_event, frame_storage, stop_event):
+def show_camera(frame_event, frame_storage, stop_event, name = None):
     cap = cv2.VideoCapture(1)
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:
             break
-        cv2.imshow("Live camera view", frame)
+        cv2.imshow(f"Live camera view | {name}", frame)
         if frame_event.is_set():
             frame_storage['frame'] = frame
             frame_event.clear()
