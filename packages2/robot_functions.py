@@ -32,32 +32,12 @@ class RobotFunctions():
             print(f'reset_gripper | wrong message : {msg}')
             return 1
 
-    def moveL_onlyZ(self, z_trans):
-        robot_pose = self.give_pose()
-        print(f'robot_pose :{robot_pose}')
-        self.client.send(CmdGenerator.basic("MoveL"))
-        msg = self.client.recv(1024)
-        if msg == b"MoveL_wait_pos":
-            x, y, z, rx, ry, rz = robot_pose
-            cmd = f"({x}, {y}, {z + z_trans})"
-            self.client.send(CmdGenerator.basic(cmd))
-            msg = self.client.recv(1024)
-            if msg == b"MoveL_done":
-                return 0
-            else:
-                print(f'moveL done | wrong message : {msg}')
-            return 1
-        else: 
-            print(f'moveL | wrong message : {msg}')
-            return 1
-        
-
     def moveL_pose(self, pose):
         self.client.send(CmdGenerator.basic("MoveL_pose"))
         msg = self.client.recv(1024)
         if msg == b"MoveL_pose_wait_pos":
-            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame3(pose)}')
-            self.client.send(CmdGenerator.pose_convert_to_tcp_frame3(pose))
+            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame(pose)}')
+            self.client.send(CmdGenerator.pose_convert_to_tcp_frame(pose))
             msg = self.client.recv(1024)
             if msg == b"MoveL_pose_done":
                 return 0
@@ -72,8 +52,8 @@ class RobotFunctions():
         self.client.send(CmdGenerator.basic("MoveJ"))
         msg = self.client.recv(1024)
         if msg == b"MoveJ_wait_pos":
-            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame(pose)}')
-            self.client.send(CmdGenerator.pose_convert_to_tcp_frame(pose))
+            print(f'CmdGenerator.joints_convert_to_tcp_frame(pose): {CmdGenerator.joints_convert_to_tcp_frame(pose)}')
+            self.client.send(CmdGenerator.joints_convert_to_tcp_frame(pose))
             msg = self.client.recv(1024)
             if msg == b"MoveJ_done":
                 return 0
@@ -88,8 +68,8 @@ class RobotFunctions():
         self.client.send(CmdGenerator.basic("MoveJ_pose"))
         msg = self.client.recv(1024)
         if msg == b"MoveJ_pose_wait_pos":
-            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame3(pose)}')
-            self.client.send(CmdGenerator.pose_convert_to_tcp_frame3(pose))
+            print(f'CmdGenerator.pose_convert_to_tcp_frame(pose): {CmdGenerator.pose_convert_to_tcp_frame(pose)}')
+            self.client.send(CmdGenerator.pose_convert_to_tcp_frame(pose))
             msg = self.client.recv(1024)
             if msg == b"MoveJ_pose_done":
                 return 0
