@@ -261,10 +261,6 @@ class LoopStateMachine:
             return random_record["pixel_coords"], random_record["label"]
         return None, None
 
-    def offset_z_axis(self, pose, offset):
-        pose["z"] += offset
-        return pose
-
     def calculate_center_point(self, contour):
         target_pixel = [0, 0] 
         M = cv2.moments(contour)
@@ -276,7 +272,6 @@ class LoopStateMachine:
     def pick_object(self, pose, z_offset=0.1):
         pick_pose = pose.copy()
         pick_pose["z"] += z_offset
-        # pick_pose = self.offset_z_axis(pick_pose, z_offset)
         self.rf.moveJ_pose(pick_pose)
         time.sleep(0.2)
         self.rf.moveL_pose(pose)
@@ -289,7 +284,6 @@ class LoopStateMachine:
     def drop_object(self, pose, z_offset=0.1):
         drop_pose = pose.copy()
         drop_pose["z"] += z_offset
-        # pick_pose = self.offset_z_axis(pick_pose, z_offset)
         self.rf.moveJ_pose(drop_pose)
         time.sleep(0.2)
         self.rf.moveL_pose(pose)
