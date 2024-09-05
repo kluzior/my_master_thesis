@@ -38,33 +38,33 @@ class LoopStateMachine:
     def run(self):
         while True:
             if self.state == 'Initialization':
-                self.initialization()
+                self.state_initialization()
             elif self.state == 'GoToWaitPosition_init':
-                self.go_to_wait_position_init()
+                self.state_go_to_wait_position_init()
             elif self.state == 'GoToWaitPosition':
-                self.go_to_wait_position()
+                self.state_go_to_wait_position()
             elif self.state == 'IdentificationContours':
-                self.identification_contours()
+                self.state_identification_contours()
             elif self.state == 'WaitForObjects':
-                self.wait_for_objects()
+                self.state_wait_for_objects()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label = self.choose_object2pick_up(strategy="sequence")
+                target_pixel, label = self.state_choose_object2pick_up(strategy="sequence")
             elif self.state == 'GoToPickUpObject':
-                self.go_to_pick_up_object(target_pixel, label)
+                self.state_go_to_pick_up_object(target_pixel, label)
             elif self.state == 'PickUpAndMove':
-                self.pick_up_and_move(label)
+                self.state_pick_up_and_move(label)
             elif self.state == 'ReturnToWaitPosition':
-                self.return_to_wait_position()
+                self.state_return_to_wait_position()
             else:
                 print("Unknown state!")
                 break
 
-    def initialization(self):
+    def state_initialization(self):
         print("Initializing robot...")
 
         self.state = 'GoToWaitPosition_init'
 
-    def go_to_wait_position_init(self):
+    def state_go_to_wait_position_init(self):
         print("Going to wait position...")
         ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
 
@@ -79,14 +79,14 @@ class LoopStateMachine:
         if self.table_roi_points is not None:
             self.state = 'GoToWaitPosition'
 
-    def go_to_wait_position(self):
+    def state_go_to_wait_position(self):
         print("Going to wait position...")
         ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
         if ret == 0:
             time.sleep(1)
             self.state = 'IdentificationContours'
 
-    def identification_contours(self):
+    def state_identification_contours(self):
         contours_identified = False
         print("Identifying contours...")
         self.frame_event.set()  # signal camera thread to capture frame
@@ -172,12 +172,12 @@ class LoopStateMachine:
         else:
             self.state = 'ChooseObjectToPickUp'
 
-    def wait_for_objects(self):
+    def state_wait_for_objects(self):
         print("Waiting for objects")
         time.sleep(5)
         self.state = 'IdentificationContours'
 
-    def choose_object2pick_up(self, strategy="sequence", label=2):
+    def state_choose_object2pick_up(self, strategy="sequence", label=2):
         print("Choose position according to strategy")
         if strategy == "random":
             target_pixel, label = self.pick_random()
@@ -192,7 +192,7 @@ class LoopStateMachine:
             self.state = 'WaitForObjects'
             return None, None
 
-    def go_to_pick_up_object(self, target_pixel, label):
+    def state_go_to_pick_up_object(self, target_pixel, label):
         print("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
@@ -205,7 +205,7 @@ class LoopStateMachine:
         if ret == 0:
             self.state = 'PickUpAndMove'
 
-    def pick_up_and_move(self, label):
+    def state_pick_up_and_move(self, label):
         print("Picking up object and moving to position...")
         object_height = 0.008
         bank_pose = self.robposes.banks[label]
@@ -218,7 +218,7 @@ class LoopStateMachine:
         if ret == 0:
             self.state = 'ReturnToWaitPosition'
 
-    def return_to_wait_position(self):
+    def state_return_to_wait_position(self):
         print("Returning to wait position...")
 
         wait_position_reached = True
