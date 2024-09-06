@@ -17,6 +17,17 @@ class ImageProcessor:
         return mtx, distortion
 
     def undistort_frame(self, frame, mtx, distortion):
+        """
+        Undistorts a frame using camera calibration parameters.
+
+        Args:
+            frame (numpy.ndarray): Input frame to be undistorted.
+            mtx (numpy.ndarray): Camera matrix.
+            distortion (numpy.ndarray): Distortion coefficients.
+
+        Returns:
+            tuple: A tuple containing the undistorted frame and the new camera matrix.
+        """
         h, w = frame.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, distortion, (w, h), 1, (w, h))
         undst = cv2.undistort(frame, mtx, distortion, None, newcameramtx)
@@ -25,6 +36,23 @@ class ImageProcessor:
         return undst, newcameramtx
 
     def apply_binarization(self, gray, binarization='standard'):
+        """
+        Apply binarization to a grayscale image.
+
+        Parameters:
+        - gray: numpy.ndarray
+            Grayscale image to be binarized.
+        - binarization: str, optional
+            Binarization method to be used. Default is 'standard'.
+            Available options: 'standard', 'adaptive', 'canny', 'otsu'.
+
+        Returns:
+        - mask: numpy.ndarray
+            Binarized image.
+
+        Raises:
+        - ValueError: If an unknown binarization method is provided.
+        """
         if binarization == 'standard' or binarization == 'raw':
             _, mask = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY)
         elif binarization == 'adaptive':
@@ -117,7 +145,6 @@ class ImageProcessor:
 
     def get_roi_points(self, frame):                
         print("Please select ROI point on picture!")
-
         while True:
             def click_event(event, x, y, flags, params):
                 roi_points, img = params['roi_points'], params['img']
@@ -125,21 +152,16 @@ class ImageProcessor:
                     roi_points.append([x, y])
                     cv2.circle(img, (x, y), 5, (255, 0, 0), -1)
                     cv2.imshow("image", img)
-
             img = frame.copy()
             if img is None:
                 print("Error loading image")
                 return None
-
             roi_points = []
-
             cv2.imshow('image', img)
             cv2.setMouseCallback('image', click_event, {'roi_points': roi_points, 'img': img})
-
             while True:
                 if cv2.waitKey(20) == 27:  # Esc key
                     break
-
             if len(roi_points) > 0:
                 overlay = img.copy()
                 pts = np.array([roi_points], np.int32)
@@ -147,7 +169,6 @@ class ImageProcessor:
                 cv2.addWeighted(overlay, 0.5, img, 0.5, 0, img)
                 cv2.imshow("ROI", img)
                 cv2.waitKey(1)
-
             user_input = input("Accept ROI? (y/n): ")
             if user_input.lower() == 'y':
                 cv2.destroyWindow("ROI")

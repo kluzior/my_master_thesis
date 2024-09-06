@@ -12,23 +12,23 @@ class PlaneDeterminator:
         self.frame = cv2.imread(handeye_path + "/waiting_pos/WAITING_POSE.jpg")
         self.uframe, self.newcameramtx = self.image_processor.undistort_frame(self.frame, self.camera_matrix, self.dist_params)
         self.handeye_path = handeye_path
-        self.get_plane_points(self.uframe)
+        self.get_virtual_plane_points(self.uframe)
 
         self.he = HandEyeCalibration(self.camera_params_path)
 
-    def get_plane_points(self, frame, chess_size=(8, 7)):
+    def get_virtual_plane_points(self, frame, chess_size=(8, 7)):
         rvec, tvec, _ = self.image_processor.calculate_rvec_tvec(frame)
         R, _ = cv2.Rodrigues(rvec)
 
         # Wektor normalny do płaszczyzny
-        self.normal_vector = R[:, 2]  # Trzecia kolumna macierzy R
+        self.normal_vector_to_vplane = R[:, 2]  # Trzecia kolumna macierzy R
 
         # Punkt na płaszczyźnie
-        self.point_on_plane = tvec.flatten()
+        self.point_on_vplane = tvec.flatten()
 
         self.rmtx = R
 
-        return self.normal_vector, self.point_on_plane
+        return self.normal_vector_to_vplane, self.point_on_vplane
 
     def pixel_to_camera_plane(self, pixel):
         # Konwersja punktu 2D na promień 3D w układzie kamery
@@ -42,8 +42,8 @@ class PlaneDeterminator:
         camera_origin = np.array([0.0, 0.0, 0.0])
 
         # Wyznaczenie punktu przecięcia promienia z płaszczyzną
-        numerator = np.dot(self.normal_vector, (self.point_on_plane - camera_origin))
-        denominator = np.dot(self.normal_vector, ray_direction)
+        numerator = np.dot(self.normal_vector_to_vplane, (self.point_on_vplane - camera_origin))
+        denominator = np.dot(self.normal_vector_to_vplane, ray_direction)
 
         if denominator == 0:
             raise ValueError("Promień jest równoległy do płaszczyzny i nie przecina jej.")

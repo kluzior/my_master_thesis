@@ -41,6 +41,12 @@ class LoopStateMachine:
         folder_with_time = "images_" + timestamp
         self.directory_with_time = Path("data/results/identification/"+folder_with_time)
         self.directory_with_time.mkdir(parents=True, exist_ok=True)
+        self.virtual_plane_offset = 0.005   # mm
+        self.objects_height = 0.008         # mm
+        # if self.virtual_plane_offset != self.objects_height:
+        self.pose_look_at_objects = self.robposes.look_at_chessboard
+        self.pose_look_at_objects["z"] += self.objects_height - self.virtual_plane_offset
+        print(f"self.pose_look_at_objects: {self.pose_look_at_objects}")
 
     def run(self):
         while True:
@@ -73,7 +79,7 @@ class LoopStateMachine:
 
     def state_go_to_wait_position_init(self):
         print("Going to wait position...")
-        ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
+        ret = self.rf.moveJ_pose(self.pose_look_at_objects)
 
         self.frame_event.set()  # signal camera thread to capture frame
         while self.frame_event.is_set():
@@ -88,7 +94,7 @@ class LoopStateMachine:
 
     def state_go_to_wait_position(self):
         print("Going to wait position...")
-        ret = self.rf.moveJ_pose(self.robposes.look_at_objects)
+        ret = self.rf.moveJ_pose(self.pose_look_at_objects)
         if ret == 0:
             time.sleep(1)
             self.state = 'IdentificationContours'
@@ -169,7 +175,9 @@ class LoopStateMachine:
 
         ### ADD SAVING THIS IMAGE TO FILES!!!
         _img_path = f"{self.directory_with_time}/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
+        _uimg_path = f"{self.directory_with_time}/uimg/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
         cv2.imwrite(_img_path, img_identification_result)
+        cv2.imwrite(_uimg_path, uimg)
 
 
         cv2.waitKey(3000)
@@ -219,7 +227,7 @@ class LoopStateMachine:
         print("Picking up object and moving to position...")
         self.rf.moveJ_pose(self.robposes.before_banks)
         object_height = 0.008
-        bank_pose = self.robposes.banks[label]
+        bank_pose = self.robposes.banks[label].copy()
         bank_pose["z"] += (self.bank_counters[label] + 1) * object_height
 
         ret = self.drop_object(bank_pose)
