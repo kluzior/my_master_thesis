@@ -48,6 +48,9 @@ class LoopStateMachine:
         self.pose_look_at_objects["z"] += self.objects_height - self.virtual_plane_offset
         print(f"self.pose_look_at_objects: {self.pose_look_at_objects}")
 
+        self.iter_num = 100
+        self.iter_count = 0
+
     def run(self):
         while True:
             if self.state == 'Initialization':
@@ -119,7 +122,6 @@ class LoopStateMachine:
             contours, _ = cv2.findContours(final_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 600]
 
-            img_to_show_elipse = uimg.copy()
             img_to_show_elipse2 = uimg.copy()
 
             for contour in contours:
@@ -127,22 +129,6 @@ class LoopStateMachine:
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
                 contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
                 # self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
-
-                ellipse = cv2.fitEllipse(contour)
-                cv2.ellipse(img_to_show_elipse, ellipse, (0, 255, 0), 2)
-                (center, axes, angle) = ellipse
-                center = tuple(map(int, center))  # Konwersja do int dla rysowania
-                major_axis_length = axes[0] / 2  # Połowa dłuższej osi
-                # Obliczanie punktów na końcach głównej osi elipsy
-                x_offset = int(major_axis_length * np.cos(np.deg2rad(angle)))
-                y_offset = int(major_axis_length * np.sin(np.deg2rad(angle)))
-                
-                p1 = (center[0] - x_offset, center[1] - y_offset)
-                p2 = (center[0] + x_offset, center[1] + y_offset)
-                
-                # Rysowanie głównej osi konturu
-                cv2.line(img_to_show_elipse, p1, p2, (255, 0, 0), 2)
-
 
                 # Obliczanie momentów konturu
                 M = cv2.moments(contour)
@@ -169,8 +155,6 @@ class LoopStateMachine:
                 self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame, angle)
 
 
-        cv2.imshow("img_to_show_elipse", img_to_show_elipse)
-
         cv2.imshow("img_to_show_elipse2", img_to_show_elipse2)
 
         ### VISUALISE IDENTIFICATION RESULTS
@@ -179,14 +163,14 @@ class LoopStateMachine:
 
         ### ADD SAVING THIS IMAGE TO FILES!!!
         _img_path = f"{self.directory_with_time}/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
-        _uimg_path = f"{self.directory_with_time}/uimg/{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
+        _uimg_path = f"{self.directory_with_time}/uimg_{datetime.datetime.now().strftime("%H-%M-%S")}.jpg"
         cv2.imwrite(_img_path, img_identification_result)
         cv2.imwrite(_uimg_path, uimg)
-
+        self.iter_count += 1
+        print(f"ITER COUNT: {self.iter_count}")
 
         cv2.waitKey(3000)
         cv2.destroyWindow("identification results")
-        cv2.destroyWindow("img_to_show_elipse")
         cv2.destroyWindow("img_to_show_elipse2")
 
         if not self.objects_record:

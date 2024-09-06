@@ -275,12 +275,12 @@ class NN_Classification:
 
 class NN_Classificator:
     shape_colors = {
-        'None': (0, 0, 0),          # Black for unknown shape
+        'None': (255, 255, 255),    # White for unknown shape
         'Label1': (255, 0, 0),      # Blue for Label1
         'Label2': (0, 255, 0),      # Green for Label2
         'Label3': (0, 0, 255),      # Red for Label3
         'Label4': (255, 255, 0),    # Cyan for Label4
-        'Label5': (255, 255, 255)   # White for Label5
+        'Label5': (200, 200, 255)   # Pink for Label5
     }
     shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
 
@@ -295,39 +295,6 @@ class NN_Classificator:
     def prepare_image(self):
 
         pass
-
-    # def prepare_image_from_path(self, image_path):
-    #     mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
-    #     # read image
-    #     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    #     if img is None:
-    #         print(f"Failed to read {image_path}")
-    #         return
-    #     # ignore background                
-    #     # iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
-    #     # undistort
-    #     uimg = self.image_processor.undistort_frame(iimg, mtx, distortion)
-    #     # binarize
-    #     buimg = self.image_processor.apply_binarization(uimg, 'standard')
-    #     # find contour + crop
-    #     objects, coordinates, _ = self.image_processor.crop_image(buimg)
-    #     # save
-    #     return objects, coordinates, roi_contours
-
-    # def prepare_frame(self, frame):
-    #     mtx, distortion = self.image_processor.load_camera_params('CameraParams.npz')
-    #     img = frame
-    #     if len(frame.shape) == 3 and frame.shape[2] == 3:
-    #         # Convert to grayscale
-    #         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #     # ignore background                
-    #     iimg, roi_contours = self.image_processor.ignore_background(img, self.roi_points)
-    #     # binarize
-    #     buimg = self.image_processor.apply_binarization(iimg, 'standard')
-    #     # find contour + crop
-    #     objects, coordinates, _ = self.image_processor.crop_image(buimg)
-    #     # save
-    #     return buimg, objects, coordinates, roi_contours
     
     def predict_shape(self, img, image_size=(28, 28)):
         img = transform.resize(img, image_size)
