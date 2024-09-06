@@ -3,7 +3,7 @@ from packages2.robot_positions import RobotPositions
 from packages2.image_processor import ImageProcessor
 from packages2.plane_determination import PlaneDeterminator
 from packages2.handeye_eye_in_hand import HandEyeCalibration
-from packages2.common import show_camera, pose2rvec_tvec
+from packages2.common import show_camera, pose2rvec_tvec, pose_list_to_dict, joints_list_to_dict
 from packages2.neural_network import NN_Classificator
 
 import cv2
@@ -61,9 +61,9 @@ class LoopStateMachine:
             elif self.state == 'WaitForObjects':
                 self.state_wait_for_objects()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label = self.state_choose_object2pick_up(strategy="random")
+                target_pixel, label, angle = self.state_choose_object2pick_up(strategy="random")
             elif self.state == 'GoToPickUpObject':
-                self.state_go_to_pick_up_object(target_pixel, label)
+                self.state_go_to_pick_up_object(target_pixel, angle)
             elif self.state == 'PickUpAndMove':
                 self.state_pick_up_and_move(label)
             elif self.state == 'ReturnToWaitPosition':
@@ -126,7 +126,7 @@ class LoopStateMachine:
                 target_pixel = self.calculate_center_point(contour)
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
                 contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
-                self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
+                # self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
 
                 ellipse = cv2.fitEllipse(contour)
                 cv2.ellipse(img_to_show_elipse, ellipse, (0, 255, 0), 2)
@@ -163,6 +163,10 @@ class LoopStateMachine:
                     x2 = int(cx + length * np.cos(angle))
                     y2 = int(cy + length * np.sin(angle))
                     cv2.line(img_to_show_elipse2, (cx, cy), (x2, y2), (255, 0, 0), 2)
+                    cv2.putText(img_to_show_elipse2, str(angle), (cx, cy + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
+
+
+                self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame, angle)
 
 
         cv2.imshow("img_to_show_elipse", img_to_show_elipse)
@@ -198,19 +202,19 @@ class LoopStateMachine:
     def state_choose_object2pick_up(self, strategy="sequence", label=2):
         print("Choose position according to strategy")
         if strategy == "random":
-            target_pixel, label = self.pick_random()
+            target_pixel, label, angle = self.pick_random()
         if strategy == "sequence":
-            target_pixel, label = self.search_by_labels()
+            target_pixel, label, angle = self.search_by_labels()
         if strategy == "only_label":
-            target_pixel = self.get_best_pixel_coords(label)
+            target_pixel, angle = self.get_best_pixel_coords(label)
         if target_pixel is not None:
             self.state = 'GoToPickUpObject'
-            return target_pixel, label
+            return target_pixel, label, angle
         else:
             self.state = 'WaitForObjects'
-            return None, None
+            return None, None, None
 
-    def state_go_to_pick_up_object(self, target_pixel, label):
+    def state_go_to_pick_up_object(self, target_pixel, angle):
         print("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
@@ -218,7 +222,7 @@ class LoopStateMachine:
         rotation_matrix, _, tvec = pose2rvec_tvec(list(robot_pose))
 
         target_pose, _ = self.he.calculate_point_pose2robot_base_new(self.pd.rmtx, pose.reshape(-1, 1), rotation_matrix, tvec, self.handeye_path)
-        ret = self.pick_object(target_pose)
+        ret = self.pick_object(target_pose, angle)
 
         if ret == 0:
             self.state = 'PickUpAndMove'
@@ -245,12 +249,13 @@ class LoopStateMachine:
             self.state = 'GoToWaitPosition'
 
 
-    def add_record2object(self, label, prediction, pixel_coords, contour_frame):
+    def add_record2object(self, label, prediction, pixel_coords, contour_frame, angle):
         record = {
             "label": label,
             "prediction": prediction,
             "pixel_coords": pixel_coords,
-            "contour_frame": contour_frame
+            "contour_frame": contour_frame,
+            "angle": angle
         }
         self.objects_record.append(record)
         print(f"Record added: {record}")
@@ -261,24 +266,24 @@ class LoopStateMachine:
     def get_best_pixel_coords(self, label, prediction_threshold=0.96):
         filtered_records = [record for record in self.objects_record if record["label"] == label and record["prediction"] >= prediction_threshold]
         if not filtered_records:
-            return None
+            return None, None
         best_record = max(filtered_records, key=lambda x: x["prediction"])
-        return best_record["pixel_coords"]
+        return best_record["pixel_coords"], best_record["angle"]
 
     def search_by_labels(self, prediction_threshold=0.96):
         for label in range(1, 6):
             filtered_records = [record for record in self.objects_record if record["label"] == label and record["prediction"] >= prediction_threshold]
             if filtered_records:
                 best_record = max(filtered_records, key=lambda x: x["prediction"])
-                return best_record["pixel_coords"], label
-        return None, None
+                return best_record["pixel_coords"], label, best_record["angle"]
+        return None, None, None
 
     def pick_random(self, prediction_threshold=0.96):
         filtered_records = [record for record in self.objects_record if record["label"] in range(1, 6) and record["prediction"] >= prediction_threshold]
         if filtered_records:
             random_record = random.choice(filtered_records)
-            return random_record["pixel_coords"], random_record["label"]
-        return None, None
+            return random_record["pixel_coords"], random_record["label"], random_record["angle"]
+        return None, None, None
 
     def calculate_center_point(self, contour):
         target_pixel = [0, 0] 
@@ -288,12 +293,14 @@ class LoopStateMachine:
         print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
         return target_pixel
     
-    def pick_object(self, pose, z_offset=0.1):
+    def pick_object(self, pose, angle, z_offset=0.1):
         pick_pose = pose.copy()
         pick_pose["z"] += z_offset
         self.rf.moveJ_pose(pick_pose)
+        self.rotate_wrist3(angle)
         time.sleep(0.2)
-        self.rf.moveL_pose(pose)
+        # self.rf.moveL_pose(pose)
+        self.moveL_onlyZ(-z_offset)
         time.sleep(0.2)
         self.rf.set_gripper()
         time.sleep(1)       # wait longer to give time for gripper to grip
@@ -311,3 +318,17 @@ class LoopStateMachine:
         time.sleep(0.2)
         self.rf.moveL_pose(drop_pose)
         return False
+    
+    def rotate_wrist3(self, angle):
+        robot_joints = self.rf.give_joints()
+        target_joints = joints_list_to_dict(list(robot_joints))
+        target_joints["wrist3"] += angle 
+        self.rf.moveJ(target_joints)
+
+    def moveL_onlyZ(self, z):
+        act_pose = self.rf.give_pose()
+        act_pose = list(act_pose)
+        act_pose[2] += z
+        pose = pose_list_to_dict(act_pose)
+        self.rf.moveL_pose(pose)
+

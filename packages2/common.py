@@ -57,3 +57,10 @@ def pose_list_to_dict(coords):
     
     keys = ["x", "y", "z", "Rx", "Ry", "Rz"]
     return {key: value for key, value in zip(keys, coords)}
+
+def joints_list_to_dict(coords):
+    if len(coords) != 6:
+        raise ValueError("Input list must have exactly 6 elements.")
+    
+    keys = ["base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"]
+    return {key: value for key, value in zip(keys, coords)}
