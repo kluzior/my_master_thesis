@@ -5,11 +5,10 @@ import logging
 
 class ImageProcessor:
     def __init__(self, camera_params_path = None):
+        self.camera_params_path = camera_params_path
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
         self._logger.debug(f'ImageProcessor({self}) was initialized.')
-
-        self.camera_params_path = camera_params_path
 
     def load_camera_params(self, path):
         with np.load(path) as file:
@@ -108,7 +107,6 @@ class ImageProcessor:
         ignored_image = cv2.bitwise_and(image, image, mask=mask)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         return ignored_image, contours
-    
 
     def calculate_rvec_tvec(self, frame, point_shift=(0,0), chess_size=(8,7), side_of_chess_mm=40):
         """
@@ -136,7 +134,6 @@ class ImageProcessor:
         index = np.where((objp == [0.0, 0.0, 0.0]).all(axis=1))[0]
         assert index.size == 1, "Index should have only one position"
         idx = index[0]
-        
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, chess_size, None)
         if ret == True:
@@ -179,12 +176,3 @@ class ImageProcessor:
             else:
                 print("ROI selection cancelled. Trying again...")
                 cv2.destroyWindow('image')
-
-    def find_centroid(self, contour):
-        M = cv2.moments(contour)
-        if M["m00"] == 0:
-            return None
-        cx = int(M["m10"] / M["m00"])
-        cy = int(M["m01"] / M["m00"])
-        return np.array([cx, cy], dtype=np.float32)
-    
