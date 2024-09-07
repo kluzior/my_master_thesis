@@ -174,7 +174,7 @@ class ImageProcessor:
                 cv2.destroyWindow("ROI")
                 cv2.destroyWindow('image')
                 roi_array = np.array(roi_points)
-                print("ROI points saved as:\n", roi_array)
+                self._logger.info("ROI points saved as:\n", roi_array)
                 return roi_array
             else:
                 print("ROI selection cancelled. Trying again...")

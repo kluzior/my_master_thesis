@@ -75,7 +75,7 @@ class Program ():
         self.my_camera.cap.release()
 
 if __name__ == "__main__":
-    model_file_path = 'models/mlp_model_accuracy_1_0000_lbfgs_logistic_constant_batch32_09-07_03-31.joblib'
+    model_file_path = 'data/results/models/mlp_model_accuracy_0_9389_lbfgs_tanh_adaptive_batch32_07-09_03-12_1.joblib'
     camera_calib_result_path = 'data/results/for_camera_calib/images_05-09_14-51/CameraParams.npz'
     program = Program(model_file_path, camera_calib_result_path)
     program.run()

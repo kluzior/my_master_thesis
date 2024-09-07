@@ -10,6 +10,7 @@ import cv2
 import threading
 import time
 import numpy as np
+import logging
 
 from packages2.robot_poses import RobotPoses
 import random
@@ -38,18 +39,16 @@ class LoopStateMachine:
         self.bank_counters =  list(0 for _ in range(6))
         self.timestamp = timestamp
 
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'ImageProcessor({self}) was initialized.')
+
         folder_with_time = "images_" + timestamp
         self.directory_with_time = Path("data/results/identification/"+folder_with_time)
         self.directory_with_time.mkdir(parents=True, exist_ok=True)
         self.virtual_plane_offset = 0.005   # mm
         self.objects_height = 0.008         # mm
-        # if self.virtual_plane_offset != self.objects_height:
         self.pose_look_at_objects = self.robposes.look_at_chessboard
         self.pose_look_at_objects["z"] += self.objects_height - self.virtual_plane_offset
-        print(f"self.pose_look_at_objects: {self.pose_look_at_objects}")
-
-        self.iter_num = 100
-        self.iter_count = 0
 
     def run(self):
         while True:
@@ -72,16 +71,16 @@ class LoopStateMachine:
             elif self.state == 'ReturnToWaitPosition':
                 self.state_return_to_wait_position()
             else:
-                print("Unknown state!")
+                self._logger.error("Unknown state!")
                 break
 
     def state_initialization(self):
-        print("Initializing robot...")
+        self._logger.info("Initializing robot...")
 
         self.state = 'GoToWaitPosition_init'
 
     def state_go_to_wait_position_init(self):
-        print("Going to wait position...")
+        self._logger.info("Going to wait position... [init]")
         ret = self.rf.moveJ_pose(self.pose_look_at_objects)
 
         self.frame_event.set()  # signal camera thread to capture frame
@@ -96,7 +95,7 @@ class LoopStateMachine:
             self.state = 'GoToWaitPosition'
 
     def state_go_to_wait_position(self):
-        print("Going to wait position...")
+        self._logger.info("Going to wait position...")
         ret = self.rf.moveJ_pose(self.pose_look_at_objects)
         if ret == 0:
             time.sleep(1)
@@ -104,7 +103,7 @@ class LoopStateMachine:
 
     def state_identification_contours(self):
         contours_identified = False
-        print("Identifying contours...")
+        self._logger.info("Identifying contours...")
         self.frame_event.set()  # signal camera thread to capture frame
         while self.frame_event.is_set():
             time.sleep(0.1)  # wait a bit before checking again
@@ -127,7 +126,7 @@ class LoopStateMachine:
             for contour in contours:
                 target_pixel = self.calculate_center_point(contour)
                 cropped_image, contour_frame = self.ip.crop_contour(final_img, contour)
-                contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image)
+                contour_prediction, contour_probability = self.nnc.predict_shape(cropped_image, image_size=(64,64))
                 # self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame)
 
                 # Obliczanie momentów konturu
@@ -179,12 +178,12 @@ class LoopStateMachine:
             self.state = 'ChooseObjectToPickUp'
 
     def state_wait_for_objects(self):
-        print("Waiting for objects")
+        self._logger.info("Waiting for objects")
         time.sleep(5)
         self.state = 'IdentificationContours'
 
     def state_choose_object2pick_up(self, strategy="sequence", label=2):
-        print("Choose position according to strategy")
+        self._logger.info("Choose position according to strategy")
         if strategy == "random":
             target_pixel, label, angle = self.pick_random()
         if strategy == "sequence":
@@ -199,26 +198,26 @@ class LoopStateMachine:
             return None, None, None
 
     def state_go_to_pick_up_object(self, target_pixel, angle):
-        print("Going to pick up object...")
+        self._logger.info("Going to pick up object...")
         self.clear_records()
         pose = self.pd.pixel_to_camera_plane(target_pixel)
         robot_pose = self.rf.give_pose()
         rotation_matrix, _, tvec = pose2rvec_tvec(list(robot_pose))
 
         target_pose, _ = self.he.calculate_point_pose2robot_base_new(self.pd.rmtx, pose.reshape(-1, 1), rotation_matrix, tvec, self.handeye_path)
-        ret = self.pick_object(target_pose, angle)
+        ret = self.rf.pick_object(target_pose, angle)
 
         if ret == 0:
-            self.state = 'PickUpAndMove'
+            self.state = 'GoToWaitPosition'
 
     def state_pick_up_and_move(self, label):
-        print("Picking up object and moving to position...")
+        self._logger.info("Picking up object and moving to position...")
         self.rf.moveJ_pose(self.robposes.before_banks)
         object_height = 0.008
         bank_pose = self.robposes.banks[label].copy()
         bank_pose["z"] += (self.bank_counters[label] + 1) * object_height
 
-        ret = self.drop_object(bank_pose)
+        ret = self.rf.drop_object(bank_pose)
 
         self.bank_counters[label] += 1
 
@@ -226,7 +225,7 @@ class LoopStateMachine:
             self.state = 'ReturnToWaitPosition'
 
     def state_return_to_wait_position(self):
-        print("Returning to wait position...")
+        self._logger.info("Returning to wait position...")
 
         wait_position_reached = True
         if wait_position_reached:
@@ -242,7 +241,7 @@ class LoopStateMachine:
             "angle": angle
         }
         self.objects_record.append(record)
-        print(f"Record added: {record}")
+        self._logger.debug(f"Record added: {record}")
 
     def clear_records(self):
         self.objects_record.clear()
@@ -274,45 +273,4 @@ class LoopStateMachine:
         M = cv2.moments(contour)
         target_pixel[0] = float(M['m10'] / M['m00'])
         target_pixel[1] = float(M['m01'] / M['m00'])
-        print(f"cx: {target_pixel[0]}, cy: {target_pixel[1]}")
         return target_pixel
-    
-    def pick_object(self, pose, angle, z_offset=0.1):
-        pick_pose = pose.copy()
-        pick_pose["z"] += z_offset
-        self.rf.moveJ_pose(pick_pose)
-        self.rotate_wrist3(angle)
-        time.sleep(0.2)
-        # self.rf.moveL_pose(pose)
-        self.moveL_onlyZ(-z_offset)
-        time.sleep(0.2)
-        self.rf.set_gripper()
-        time.sleep(1)       # wait longer to give time for gripper to grip
-        self.rf.moveL_pose(pick_pose)
-        return False
-
-    def drop_object(self, pose, z_offset=0.1):
-        drop_pose = pose.copy()
-        drop_pose["z"] += z_offset
-        self.rf.moveJ_pose(drop_pose)
-        time.sleep(0.2)
-        self.rf.moveL_pose(pose)
-        time.sleep(0.2)
-        self.rf.reset_gripper()
-        time.sleep(0.2)
-        self.rf.moveL_pose(drop_pose)
-        return False
-    
-    def rotate_wrist3(self, angle):
-        robot_joints = self.rf.give_joints()
-        target_joints = joints_list_to_dict(list(robot_joints))
-        target_joints["wrist3"] += angle 
-        self.rf.moveJ(target_joints)
-
-    def moveL_onlyZ(self, z):
-        act_pose = self.rf.give_pose()
-        act_pose = list(act_pose)
-        act_pose[2] += z
-        pose = pose_list_to_dict(act_pose)
-        self.rf.moveL_pose(pose)
-

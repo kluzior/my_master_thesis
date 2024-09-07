@@ -1,6 +1,7 @@
 import re
 import time
 from packages2.cmd_generator import CmdGenerator
+from packages2.common import pose_list_to_dict, joints_list_to_dict
 
 class RobotFunctions():
     def __init__(self, client):
@@ -105,3 +106,43 @@ class RobotFunctions():
         else:
             print("Error: Expected 6 values, but found a different number.")
             return (0, 0, 0, 0, 0, 0)
+        
+
+    def rotate_wrist3(self, angle):
+        robot_joints = self.give_joints()
+        target_joints = joints_list_to_dict(list(robot_joints))
+        target_joints["wrist3"] += angle 
+        self.moveJ(target_joints)
+
+    def moveL_onlyZ(self, z):
+        act_pose = self.give_pose()
+        act_pose = list(act_pose)
+        act_pose[2] += z
+        pose = pose_list_to_dict(act_pose)
+        self.moveL_pose(pose)
+
+
+    def pick_object(self, pose, angle, z_offset=0.1):
+        pick_pose = pose.copy()
+        pick_pose["z"] += z_offset
+        self.moveJ_pose(pick_pose)
+        self.rotate_wrist3(angle)
+        time.sleep(0.2)
+        self.moveL_onlyZ(-z_offset)
+        time.sleep(0.2)
+        self.set_gripper()
+        time.sleep(0.2)
+        self.moveL_pose(pick_pose)
+        return False
+
+    def drop_object(self, pose, z_offset=0.1):
+        drop_pose = pose.copy()
+        drop_pose["z"] += z_offset
+        self.moveJ_pose(drop_pose)
+        time.sleep(0.2)
+        self.moveL_pose(pose)
+        time.sleep(0.2)
+        self.reset_gripper()
+        time.sleep(0.2)
+        self.moveL_pose(drop_pose)
+        return False

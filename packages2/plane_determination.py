@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from packages2.image_processor import ImageProcessor
 from packages2.handeye_eye_in_hand import HandEyeCalibration
+import logging
 
 class PlaneDeterminator:
     def __init__(self, camera_params_path, handeye_path):
@@ -15,6 +16,9 @@ class PlaneDeterminator:
         self.get_virtual_plane_points(self.uframe)
 
         self.he = HandEyeCalibration(self.camera_params_path)
+
+        self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
+        self._logger.debug(f'PlaneDeterminator({self}) was initialized.')
 
     def get_virtual_plane_points(self, frame, chess_size=(8, 7)):
         rvec, tvec, _ = self.image_processor.calculate_rvec_tvec(frame)
