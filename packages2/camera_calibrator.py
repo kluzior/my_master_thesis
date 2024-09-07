@@ -32,7 +32,6 @@ class CameraCalibrator:
         else:
             camera_intrinsic_path= self.run_calibration(from_file)
         return camera_intrinsic_path
-    
 
     def run_get_data(self):
         frame_event = threading.Event()
@@ -42,7 +41,6 @@ class CameraCalibrator:
         camera_thread.start()
         robot_functions = RobotFunctions(self.c)
         robot_poses = RobotPositions()
-
         try:
             robot_functions.moveJ(RobotPositions.look_at_chessboard)
             folder_with_time = "images_" + self.timestamp
