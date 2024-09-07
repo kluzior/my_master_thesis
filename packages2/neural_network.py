@@ -296,12 +296,12 @@ class NN_Classificator:
 
         pass
     
-    def predict_shape(self, img, image_size=(28, 28)):
+    def predict_shape(self, img, image_size=(64, 64)):
         img = transform.resize(img, image_size)
         img = img.flatten().reshape(1, -1)
         prediction = self.trained_model.predict(img)
         probability = self.trained_model.predict_proba(img)
-        return prediction[0], probability[0][prediction[0] - 1]
+        return prediction[0], probability[0][prediction[0]]
     
     def visualize(self, image, records):
         img_to_show = image.copy()
