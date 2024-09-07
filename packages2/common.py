@@ -1,12 +1,9 @@
-import math
 import numpy as np
-from numpy.linalg import inv, svd, norm, pinv
-from scipy.spatial.transform import Rotation as Rot
 import cv2
 import socket
 
-def start_communication(host = "192.168.0.1",   port = 10000):
-    print("Start listening...")
+def start_communication(host = "192.168.0.1", port = 10000):
+    print(f"Start listening on {host}:{port}...")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
@@ -54,13 +51,11 @@ def rvec_tvec2pose(rvec, tvec):
 def pose_list_to_dict(coords):
     if len(coords) != 6:
         raise ValueError("Input list must have exactly 6 elements.")
-    
     keys = ["x", "y", "z", "Rx", "Ry", "Rz"]
     return {key: value for key, value in zip(keys, coords)}
 
 def joints_list_to_dict(coords):
     if len(coords) != 6:
         raise ValueError("Input list must have exactly 6 elements.")
-    
     keys = ["base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"]
     return {key: value for key, value in zip(keys, coords)}
