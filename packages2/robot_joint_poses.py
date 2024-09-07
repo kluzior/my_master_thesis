@@ -1,6 +1,6 @@
 import math
 
-class RobotPositions:
+class RobotJointPoses:
     vacuum_gripper = 9
 
     home = {
@@ -12,7 +12,6 @@ class RobotPositions:
         "wrist3": math.radians(0)
     }
 
-
     pose_wait_base = {
         "base": math.radians(-45),
         "shoulder": math.radians(-112),
@@ -21,8 +20,6 @@ class RobotPositions:
         "wrist2": math.radians(-90),
         "wrist3": math.radians(0)                   # base position
     }
-
-
 
     look_at_chessboard = {
         "base": math.radians(-58),
