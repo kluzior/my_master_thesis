@@ -17,7 +17,6 @@ def configure_logger(timestamp, path='data/logs/debug' ):
     console_handler.setFormatter(console_formatter)
     main_logger.addHandler(console_handler)
 
-
     debug_handler = logging.FileHandler(filename=log_file)
     debug_handler.setLevel(logging.DEBUG)
     DEBUG_LOG_FORMAT = '[%(asctime)-15s] [%(levelname)-8s] [%(name)-50s] [%(module)-15s] %(message)s (%(funcName)s:%(lineno)d)'
