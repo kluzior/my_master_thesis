@@ -45,6 +45,8 @@ class LoopStateMachine:
         self.pose_look_at_objects = self.robposes.look_at_chessboard
         self.pose_look_at_objects["z"] += self.objects_height - self.virtual_plane_offset
 
+        self.iter = 0
+
     def run(self):
         while True:
             if self.state == 'Initialization':
@@ -122,6 +124,9 @@ class LoopStateMachine:
         cv2.imwrite(_uimg_path, uimg)
         cv2.waitKey(3000)
         cv2.destroyWindow("identification results")
+
+        self.iter += 1
+        print(f"ITERACJA NUMER: {self.iter}")
 
         if not self.objects_record:
             self.state = 'WaitForObjects'

@@ -1,5 +1,5 @@
 import time
-from packages2.robot_positions import RobotPositions
+from packages2.robot_joint_poses import RobotJointPoses
 from packages2.robot_poses import RobotPoses
 from packages2.robot_functions import RobotFunctions
 from packages2.image_processor import ImageProcessor
@@ -8,10 +8,8 @@ import socket
 import cv2
 import threading
 import numpy as np
-# import datetime
 from pathlib import Path
 import os
-from scipy.spatial.transform import Rotation as R
 import logging
 
 class HandEyeCalibration:
@@ -41,11 +39,9 @@ class HandEyeCalibration:
         frame_storage = {}
         camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event, "Hand-eye calibration"))
         camera_thread.start()
-
         robot_functions = RobotFunctions(self.c)
-        robot_positions = RobotPositions()
+        robot_positions = RobotJointPoses()
         robot_poses = RobotPoses()
-
         try:
             robot_functions.moveJ_pose(robot_poses.look_at_chessboard)
 
@@ -126,7 +122,6 @@ class HandEyeCalibration:
             stop_event.set()
             camera_thread.join()            
             self._logger.info("Procedure of taking pictures for hand-eye calibration completed.")
-        
         return True, directory_with_time
 
     def get_images(self, path=''):

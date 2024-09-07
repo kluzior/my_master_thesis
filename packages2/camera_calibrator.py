@@ -1,4 +1,4 @@
-from packages2.robot_positions import RobotPositions
+from packages2.robot_joint_poses import RobotJointPoses
 from packages2.robot_functions import RobotFunctions
 from packages2.common import show_camera
 import time
@@ -40,9 +40,9 @@ class CameraCalibrator:
         camera_thread = threading.Thread(target=show_camera, args=(frame_event, frame_storage, stop_event, "Camera calibration"))
         camera_thread.start()
         robot_functions = RobotFunctions(self.c)
-        robot_poses = RobotPositions()
+        robot_poses = RobotJointPoses()
         try:
-            robot_functions.moveJ(RobotPositions.look_at_chessboard)
+            robot_functions.moveJ(RobotJointPoses.look_at_chessboard)
             folder_with_time = "images_" + self.timestamp
             directory_with_time = Path("data/results/for_camera_calib/"+folder_with_time)
             directory_with_time.mkdir(parents=True, exist_ok=True)

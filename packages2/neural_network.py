@@ -70,7 +70,6 @@ class NN_Preparing:
                             f'\troot: \t{root}\n'
                             f'\tdirs: \t{dirs}\n'
                             f'\tfiles: \t{files}')
-            # Tworzenie analogicznej struktury folderów wewnątrz folderu wynikowego
             relative_path = os.path.relpath(root, reference_folder)
             save_dir = os.path.join(results_folder, relative_path)
             os.makedirs(save_dir, exist_ok=True)
@@ -179,21 +178,21 @@ class NN_Training:
 
         mlp = MLPClassifier(max_iter=3000, random_state=42, early_stopping=True)
         parameter_space = {
-            'hidden_layer_sizes': [(50,)],            # less values only for script testing
-            'alpha': [0.0001],
-            'solver': ['sgd'],
-            'activation': ['tanh'],
-            'learning_rate': ['constant'],
-            'learning_rate_init': [0.001],
-            'batch_size': [32, 64],
+            # 'hidden_layer_sizes': [(50,)],            # less values only for script testing
+            # 'alpha': [0.0001],
+            # 'solver': ['sgd'],
+            # 'activation': ['tanh'],
+            # 'learning_rate': ['constant'],
+            # 'learning_rate_init': [0.001],
+            # 'batch_size': [32, 64],
 
-            # 'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100), (100, 50)],
-            # 'alpha': [0.0001, 0.001, 0.01, 0.1, 0.5],
-            # 'solver': ['sgd', 'adam', 'lbfgs'],
-            # 'activation': ['tanh', 'relu', 'logistic'],
-            # 'learning_rate': ['constant', 'invscaling', 'adaptive'],
-            # 'learning_rate_init': [0.001, 0.01, 0.1],
-            # 'batch_size': [32, 64, 128],
+            'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100), (100, 50)],
+            'alpha': [0.0001, 0.001, 0.01, 0.1, 0.5],
+            'solver': ['sgd', 'adam', 'lbfgs'],
+            'activation': ['tanh', 'relu', 'logistic'],
+            'learning_rate': ['constant', 'invscaling', 'adaptive'],
+            'learning_rate_init': [0.001, 0.01, 0.1],
+            'batch_size': [32, 64, 128],
         }
         clf = GridSearchCV(mlp, parameter_space, n_jobs=-1, cv=5, verbose=2, return_train_score=True)
         clf.fit(X_train, y_train)
@@ -263,7 +262,7 @@ class NN_Training:
             'batch_size': [32, 64, 128],
             'max_iter': [200, 500, 1000, 3000],
 }
-        clf = RandomizedSearchCV(mlp, parameter_space, n_iter=150, n_jobs=-1, cv=5, verbose=2, return_train_score=True, random_state=42)
+        clf = RandomizedSearchCV(mlp, parameter_space, n_iter=100, n_jobs=-1, cv=5, verbose=2, return_train_score=True, random_state=42)
         clf.fit(X_train, y_train)
 
         self._logger.info(f'Best parameters found:\n \t{clf.best_params_} ')
@@ -296,12 +295,12 @@ class NN_Training:
 
 class NN_Classification:
     shape_colors = {
-        'None': (0, 0, 0),          # Black for unknown shape
+        'None': (255, 255, 255),    # White for unknown shape
         'Label1': (255, 0, 0),      # Blue for Label1
         'Label2': (0, 255, 0),      # Green for Label2
         'Label3': (0, 0, 255),      # Red for Label3
         'Label4': (255, 255, 0),    # Cyan for Label4
-        'Label5': (255, 255, 255)   # White for Label5
+        'Label5': (200, 200, 255)   # Pink for Label5
     }
     shape_labels = ['None', 'Label1', 'Label2', 'Label3', 'Label4', 'Label5']
 
@@ -366,7 +365,6 @@ class NN_Classificator:
 
     def __init__(self, model_path,):
         self.image_processor = ImageProcessor()
-        # self.roi_points = roi_points
         self.trained_model = joblib.load(model_path)
 
         self._logger = logging.getLogger(f'{__name__}.{self.__class__.__name__}')
@@ -380,7 +378,6 @@ class NN_Classificator:
         img = transform.resize(img, image_size)
         img = img.flatten().reshape(1, -1)
         prediction = self.trained_model.predict(img)
-        print(f"TEST: {prediction}")
         probability = self.trained_model.predict_proba(img)
         return prediction[0], probability[0][prediction[0]]
     
@@ -392,7 +389,7 @@ class NN_Classificator:
             prediction = record["prediction"]
             x, y, w, h = record["contour_frame"]
             if prediction < 0.96:
-                # cv2.rectangle(img_to_show, (x, y), (x + w, y + h), [0, 0, 255], 2)
+                cv2.rectangle(img_to_show, (x, y), (x + w, y + h), [0, 0, 255], 2)
                 cv2.putText(img_to_show, "Not classified", (x, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
                 cv2.putText(img_to_show, str('{:.4f}'.format(prediction)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
             else:
