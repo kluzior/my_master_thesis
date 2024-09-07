@@ -59,3 +59,11 @@ def joints_list_to_dict(coords):
         raise ValueError("Input list must have exactly 6 elements.")
     keys = ["base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"]
     return {key: value for key, value in zip(keys, coords)}
+
+def calculate_center_point(contour):
+    target_pixel = [0, 0] 
+    M = cv2.moments(contour)
+    target_pixel[0] = float(M['m10'] / M['m00'])
+    target_pixel[1] = float(M['m01'] / M['m00'])
+    angle = 0.5 * np.arctan2(2 * M['mu11'], (M['mu20'] - M['mu02']))
+    return target_pixel, angle
