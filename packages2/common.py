@@ -25,7 +25,7 @@ def start_communication(host = "192.168.0.1",   port = 10000):
     return c, s
 
 def show_camera(frame_event, frame_storage, stop_event, name = None):
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:

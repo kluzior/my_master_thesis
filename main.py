@@ -38,7 +38,7 @@ else:
 
 # initialization
 robot_functions = RobotFunctions(c)
-configure_logger(timestamp)
+# configure_logger(timestamp)
 
 # camera calibration
 camera_calibrator = CameraCalibrator(c, timestamp)
