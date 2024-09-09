@@ -4,4 +4,3 @@ scikit-learn
 scikit-image
 joblib
 glob2
-webcolors

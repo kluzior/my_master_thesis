@@ -41,7 +41,7 @@ class LoopStateMachine:
         folder_with_time = "images_" + timestamp
         self.directory_with_time = Path("data/results/identification/"+folder_with_time)
         self.directory_with_time.mkdir(parents=True, exist_ok=True)
-        self.virtual_plane_offset = 0.005   # mm
+        self.virtual_plane_offset = 0.010   # mm
         self.objects_height = 0.008         # mm
         # if self.virtual_plane_offset != self.objects_height:
         self.pose_look_at_objects = self.robposes.look_at_chessboard
@@ -64,7 +64,7 @@ class LoopStateMachine:
             elif self.state == 'WaitForObjects':
                 self.state_wait_for_objects()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label, angle = self.state_choose_object2pick_up(strategy="random")
+                target_pixel, label, angle = self.state_choose_object2pick_up(strategy="only_label", label=5)
             elif self.state == 'GoToPickUpObject':
                 self.state_go_to_pick_up_object(target_pixel, angle)
             elif self.state == 'PickUpAndMove':
@@ -106,6 +106,8 @@ class LoopStateMachine:
         contours_identified = False
         print("Identifying contours...")
         self.frame_event.set()  # signal camera thread to capture frame
+        self.start_time = datetime.datetime.now()
+
         while self.frame_event.is_set():
             time.sleep(0.1)  # wait a bit before checking again
         if 'frame' in self.frame_storage:    
@@ -114,7 +116,8 @@ class LoopStateMachine:
             gray = cv2.cvtColor(uimg, cv2.COLOR_BGR2GRAY)
             buimg = self.ip.apply_binarization(gray)
             final_img, _ = self.ip.ignore_background(buimg, self.table_roi_points)
-            
+            self.end_time_prepare = datetime.datetime.now()
+
             cv2.imshow("prepared picure", final_img)
             cv2.waitKey(1000)
             cv2.destroyWindow("prepared picure")   
@@ -154,6 +157,7 @@ class LoopStateMachine:
 
                 self.add_record2object(contour_prediction, contour_probability, target_pixel, contour_frame, angle)
 
+        self.end_time_identification = datetime.datetime.now()
 
         cv2.imshow("img_to_show_elipse2", img_to_show_elipse2)
 
@@ -206,10 +210,18 @@ class LoopStateMachine:
         rotation_matrix, _, tvec = pose2rvec_tvec(list(robot_pose))
 
         target_pose, _ = self.he.calculate_point_pose2robot_base_new(self.pd.rmtx, pose.reshape(-1, 1), rotation_matrix, tvec, self.handeye_path)
+        target_pose["z"] -= 0.01  # ugięcie mieszków przyssawki
+        self.end_time_calc_pose= datetime.datetime.now()
         ret = self.pick_object(target_pose, angle)
 
+        print(f'ALL took {self.end_time_calc_pose - self.start_time} ')
+        print(f'PHOTO REQUEST took {self.end_time_prepare - self.start_time} ')
+        print(f'IDENTIFICATION took {self.end_time_identification - self.end_time_prepare} ')
+        print(f'CALC TARGET POSE took {self.end_time_calc_pose - self.end_time_identification} ')
+
         if ret == 0:
-            self.state = 'PickUpAndMove'
+            self.state = 'GoToWaitPosition'
+            # self.state = 'PickUpAndMove'
 
     def state_pick_up_and_move(self, label):
         print("Picking up object and moving to position...")
@@ -217,7 +229,7 @@ class LoopStateMachine:
         object_height = 0.008
         bank_pose = self.robposes.banks[label].copy()
         bank_pose["z"] += (self.bank_counters[label] + 1) * object_height
-
+        print(f"MOVE TO LABEL: {label}")
         ret = self.drop_object(bank_pose)
 
         self.bank_counters[label] += 1

@@ -46,6 +46,7 @@ if COLLECT_CAMERA_CALIB_DATA:
     camera_intrinsic_path = camera_calibrator.run()
 else:
     cc_files = "data/results/for_camera_calib/images_07-09_16-28"
+    cc_files = "data/results/for_camera_calib/images_09-09_13-35"
     camera_intrinsic_path = camera_calibrator.run(cc_files)
 print(f"camera_intrinsic_path: {camera_intrinsic_path}")
 
@@ -55,8 +56,12 @@ handeye_calibrator = HandEyeCalibration(camera_intrinsic_path, c, timestamp)
 if COLLECT_HAND_EYE_CALIB_DATA:
     handeye_path = handeye_calibrator.run()
     handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='tsai')
+    handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='park')
+    handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='horaud')
+    handeye_calibrator.send_robot_to_test_poses(handeye_path, handeye_type='daniilidis')
 else:
-    he_files = "data/results/for_hand_eye_calib/images_07-09_16-28"
+    # he_files = "data/results/for_hand_eye_calib/images_07-09_16-28"
+    he_files = "data/results/for_hand_eye_calib/images_09-09_13-35"
     handeye_path = handeye_calibrator.run(he_files)
 
 

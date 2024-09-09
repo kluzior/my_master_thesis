@@ -48,6 +48,7 @@ class HandEyeCalibration:
 
         try:
             robot_functions.moveJ_pose(robot_poses.look_at_chessboard)
+            time.sleep(1)
 
             folder_with_time = "images_" + self.timestamp
             directory_with_time = Path("data/results/for_hand_eye_calib/"+folder_with_time)
@@ -108,7 +109,6 @@ class HandEyeCalibration:
                 robot_pose = robot_functions.give_pose()
                 robot_poses_read_from_robot.append(list(robot_pose))
                 self._logger.info(f"Robot pose no. {i} was appended to list")
-                time.sleep(1)
 
             # debug saving to .txt
             with open(os.path.join(directory_with_time, 'robot_poses.txt'), 'w') as file:
@@ -273,6 +273,7 @@ class HandEyeCalibration:
             # calculate pose
             target_pose = self.generate_test_pose(str(files_path), point_shift, handeye_type)
             self._logger.info(f"calculated pose: {target_pose}")
+            # target_pose["z"] -= 0.015
             target_pose_waitpos = target_pose.copy()
             target_pose_waitpos["z"] += 0.1
             # send robot to poses
