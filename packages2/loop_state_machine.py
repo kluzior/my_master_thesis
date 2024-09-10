@@ -64,7 +64,7 @@ class LoopStateMachine:
             elif self.state == 'WaitForObjects':
                 self.state_wait_for_objects()
             elif self.state == 'ChooseObjectToPickUp':
-                target_pixel, label, angle = self.state_choose_object2pick_up(strategy="only_label", label=5)
+                target_pixel, label, angle = self.state_choose_object2pick_up(strategy="random", label=3)
             elif self.state == 'GoToPickUpObject':
                 self.state_go_to_pick_up_object(target_pixel, angle)
             elif self.state == 'PickUpAndMove':
@@ -220,8 +220,8 @@ class LoopStateMachine:
         print(f'CALC TARGET POSE took {self.end_time_calc_pose - self.end_time_identification} ')
 
         if ret == 0:
-            self.state = 'GoToWaitPosition'
-            # self.state = 'PickUpAndMove'
+            # self.state = 'GoToWaitPosition'
+            self.state = 'PickUpAndMove'
 
     def state_pick_up_and_move(self, label):
         print("Picking up object and moving to position...")
@@ -233,7 +233,7 @@ class LoopStateMachine:
         ret = self.drop_object(bank_pose)
 
         self.bank_counters[label] += 1
-
+        ret = self.rf.moveJ_pose(self.robposes.before_banks)
         if ret == 0:
             self.state = 'ReturnToWaitPosition'
 
